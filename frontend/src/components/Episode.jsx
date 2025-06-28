@@ -1,16 +1,36 @@
-import { Play } from "lucide-react";
+import { PlayCircle } from "lucide-react";
 
-// components/Episode.jsx
 const Episode = ({ episode }) => {
   return (
-    <div className="p-4 border rounded-lg shadow bg-white dark:bg-gray-800">
-      <h3 className="font-semibold">{episode.title}</h3>
-      <p className="text-sm text-gray-600">{episode.language || "English"}</p>
-      <p className="text-xs text-gray-500 mb-2">{episode.duration}</p>
-      <audio controls className="w-full">
-        <source src={episode.audioUrl} type="audio/mpeg" />
-        Your browser does not support audio playback.
-      </audio>
+    <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow hover:shadow-md transition w-full">
+      <div className="flex items-start gap-4">
+        
+        {/* Icon */}
+        <PlayCircle className="w-10 h-10 text-green-600 mt-1 shrink-0" />
+        
+        {/* Details */}
+        <div className="flex-grow">
+          <h4 className="font-semibold text-gray-900 dark:text-white line-clamp-1">
+            {episode.title || "Untitled Episode"}
+          </h4>
+          <div className="text-sm text-gray-500 dark:text-gray-400">
+            <span>{episode.language || "Unknown Language"}</span> &middot;{" "}
+            <span>{episode.duration || "Unknown duration"}</span>
+          </div>
+
+          {/* Audio */}
+          {episode.audioUrl ? (
+            <audio
+              controls
+              src={episode.audioUrl}
+              className="mt-3 w-full"
+              preload="none"
+            />
+          ) : (
+            <p className="text-xs mt-2 text-red-500">Audio not available</p>
+          )}
+        </div>
+      </div>
     </div>
   );
 };

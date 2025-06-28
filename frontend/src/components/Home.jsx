@@ -1,29 +1,107 @@
-import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { Search, User, Sun, Moon, Menu, X } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Link, useSearchParams, useLocation } from 'react-router-dom';
+import { Search, User, Sun, Moon, Menu, X, ChevronLeft, ChevronRight, Filter, ChevronDown } from 'lucide-react';
 import DropdownSidebar from "../components/DropdownSidebar";
 import LoginModal from "../components/LoginModal";
-import SignupModal from "../components/SignupModal"; // Add this import
+import SignupModal from "../components/SignupModal";
 import BookCard from './BookCard';
 import axios from "axios";
+import { useAuth } from "../context/AuthContext";
 
 const Home = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
+  
   const [darkMode, setDarkMode] = useState(() => {
-    // Fallback for when localStorage is not available
     try {
       return localStorage.getItem('theme') === 'dark';
     } catch {
       return false;
     }
   });
-  
+
   const [menuOpen, setMenuOpen] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(null); // null = loading
+  const { isLoggedIn, setIsLoggedIn } = useAuth();
   const [modalType, setModalType] = useState("login");
   const [connectionError, setConnectionError] = useState(null);
-  const [books, setBooks] = useState([]); // ✅ This line was missing
-
+  const [books, setBooks] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [initialLoad, setInitialLoad] = useState(true);
+  const [authChecked, setAuthChecked] = useState(false);
+  const authCheckRef = useRef(false);
+  
+  // Filter states
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState({
+    language: '',
+    genre: '',
+    duration: '',
+    author: ''
+  });
+  const [filterOptions, setFilterOptions] = useState({
+    languages: [],
+    genres: [],
+    durations: ['0-5 hours', '5-10 hours', '10-20 hours', '20+ hours'],
+    authors: []
+  });
+  
+  // Get page from URL params, default to 1
+  const currentPage = parseInt(searchParams.get('page')) || 1;
+  
+  // Initialize filters from URL params
+  useEffect(() => {
+    const urlFilters = {
+      language: searchParams.get('language') || '',
+      genre: searchParams.get('genre') || '',
+      duration: searchParams.get('duration') || '',
+      author: searchParams.get('author') || ''
+    };
+    setFilters(urlFilters);
+  }, [searchParams]);
+  
   const toggleMenu = () => setMenuOpen(prev => !prev);
+
+  // Function to update page in URL
+  const setPage = (newPage) => {
+    const params = new URLSearchParams(searchParams);
+    if (newPage === 1) {
+      params.delete('page'); // Remove page param for page 1 (cleaner URL)
+    } else {
+      params.set('page', newPage.toString());
+    }
+    setSearchParams(params);
+  };
+
+  // Function to update filters in URL
+  const updateFilters = (newFilters) => {
+    setFilters(newFilters);
+    const params = new URLSearchParams(searchParams);
+    
+    // Remove page when filters change
+    params.delete('page');
+    
+    // Update filter params
+    Object.entries(newFilters).forEach(([key, value]) => {
+      if (value) {
+        params.set(key, value);
+      } else {
+        params.delete(key);
+      }
+    });
+    
+    setSearchParams(params);
+  };
+
+  // Function to clear all filters
+  const clearFilters = () => {
+    const clearedFilters = {
+      language: '',
+      genre: '',
+      duration: '',
+      author: ''
+    };
+    updateFilters(clearedFilters);
+  };
 
   useEffect(() => {
     const root = document.documentElement;
@@ -39,195 +117,342 @@ const Home = () => {
       console.warn('localStorage not available:', error);
     }
   }, [darkMode]);
+
+  // Optimized auth check - runs only once
   useEffect(() => {
-  setBooks([
-    {
-      id: 1,
-      title: "The Count of Monte Cristo",
-      author: "Alexandre Dumas",
-      duration: "49 hours",
-      language: "English",
-      image: "https://archive.org/services/img/count_monte_cristo_librivox",
-      rssUrl: "https://librivox.org/bookfeeds/count-of-monte-cristo-by-alexandre-dumas.xml",
-      tags: ["Fiction", "1800s"]
-    },
-    {
-      id: 2,
-      title: "Pride and Prejudice",
-      author: "Jane Austen",
-      duration: "12 hours",
-      language: "English",
-      image: "https://archive.org/services/img/pride_and_prejudice_librivox",
-      rssUrl: "https://librivox.org/bookfeeds/pride-and-prejudice-by-jane-austen.xml",
-      tags: ["Romance", "Classic"]
-    }
-  ]);
-}, []);
+    if (authCheckRef.current) return; // Prevent multiple auth checks
+    authCheckRef.current = true;
 
+    const checkLogin = async () => {
+      try {
+        setConnectionError(null);
+        const token = localStorage.getItem("token");
+        
+        if (!token) {
+          setIsLoggedIn(false);
+          setAuthChecked(true);
+          return;
+        }
+
+        // If token exists, assume user is logged in for better UX
+        // Don't validate JWT locally as it might cause issues
+        setIsLoggedIn(true);
+        setAuthChecked(true);
+
+        // Verify with server in background (optional)
+        try {
+          const res = await axios.get("http://localhost:5000/api/auth/me", {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            timeout: 8000 // 8 second timeout
+          });
+          
+          // Only logout if server explicitly says token is invalid
+          if (!res.data) {
+            localStorage.removeItem("token");
+            setIsLoggedIn(false);
+          }
+        } catch (error) {
+          // Don't logout on network errors, only on 401/403 responses
+          if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+            localStorage.removeItem("token");
+            setIsLoggedIn(false);
+          }
+          console.warn("Background auth check failed:", error.message);
+        }
+      } catch (error) {
+        console.warn("Auth check failed:", error.message);
+        // Only set to false if there's no token at all
+        const token = localStorage.getItem("token");
+        setIsLoggedIn(!!token);
+      } finally {
+        setAuthChecked(true);
+      }
+    };
+
+    checkLogin();
+  }, [setIsLoggedIn]);
+
+  // Fetch books with caching - now uses currentPage from URL and filters
   useEffect(() => {
-  const controller = new AbortController();
-  
-  const checkLogin = async () => {
-    try {
-      setConnectionError(null);
-      
-      const token = localStorage.getItem("token");
-      if (!token) {
-        setIsLoggedIn(false);
-        return;
-      }
-
-      console.log('Attempting to connect to backend...');
-      
-      const res = await axios.get("http://localhost:5000/api/auth/me", {
-        headers: { 
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        timeout: 10000,
-        signal: controller.signal // Add this line
-      });
-
-      console.log('Backend response:', res.data);
-      setIsLoggedIn(!!res.data);
-      
-    } catch (error) {
-      // Don't update state if request was cancelled
-      if (error.name === 'CanceledError' || controller.signal.aborted) {
-        console.log('Request was cancelled');
-        return;
+    const fetchBooks = async () => {
+      // Show loading only on initial load
+      if (initialLoad) {
+        setLoading(true);
       }
       
-      console.error('Backend connection error:', error);
-      setIsLoggedIn(false);
-      setConnectionError(error.message);
+      try {
+        // Build query string with filters
+        const queryParams = new URLSearchParams({
+          page: currentPage.toString(),
+          limit: '12'
+        });
+        
+        // Add filters to query if they exist
+        Object.entries(filters).forEach(([key, value]) => {
+          if (value) {
+            queryParams.set(key, value);
+          }
+        });
+        
+        const res = await axios.get(`http://localhost:5000/api/books?${queryParams.toString()}`, {
+          timeout: 10000 // 10 second timeout
+        });
+        
+        if (Array.isArray(res.data)) {
+          setBooks(res.data);
+        } else if (res.data.books) {
+          setBooks(res.data.books);
+        } else {
+          setBooks([]);
+        }
+      } catch (error) {
+        console.error("❌ Error fetching books:", error.message);
+        setBooks([]);
+      } finally {
+        setLoading(false);
+        setInitialLoad(false);
+      }
+    };
+    
+    // Fetch filter options for dropdowns
+    const fetchFilterOptions = async () => {
+      try {
+        const res = await axios.get('http://localhost:5000/api/books/filters', {
+          timeout: 5000
+        });
+        
+        if (res.data) {
+          setFilterOptions(prev => ({
+            ...prev,
+            languages: res.data.languages || [],
+            genres: res.data.genres || [],
+            authors: res.data.authors || []
+          }));
+        }
+      } catch (error) {
+        console.warn("Failed to fetch filter options:", error.message);
+        // Set default options if API fails
+        setFilterOptions(prev => ({
+          ...prev,
+          languages: ['English', 'Hindi', 'Spanish', 'French', 'German'],
+          genres: ['Fiction', 'Non-fiction', 'Romance', 'Thriller', 'Mystery', 'Sci-Fi', 'Biography'],
+          authors: ['J.K. Rowling', 'Premchand', 'Dan Brown', 'Agatha Christie', 'Stephen King']
+        }));
+      }
+    };
+    
+    // Only fetch if auth is checked
+    if (authChecked) {
+      fetchBooks();
+      if (initialLoad) {
+        fetchFilterOptions();
+      }
     }
-  };
-
-  checkLogin();
-
-  // Cleanup function
-  return () => {
-    controller.abort();
-  };
-}, []); // Empty dependency array
+  }, [currentPage, authChecked, initialLoad, filters]); // Added filters dependency
 
   const closeModal = () => {
     setIsLoggedIn(true);
     setConnectionError(null);
+    // Mark auth as checked to prevent re-checking
+    setAuthChecked(true);
+    authCheckRef.current = true;
   };
-  
+
   const switchToSignup = () => setModalType("signup");
   const switchToLogin = () => setModalType("login");
 
-  // Loading state
-  if (isLoggedIn === null) {
+  // Show loading only during initial auth check
+  if (!authChecked) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-[#D2ECC1] to-white">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <div>Connecting to server...</div>
-          {connectionError && (
-            <div className="mt-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
-              <p className="font-semibold">Connection Error:</p>
-              <p>{connectionError}</p>
-              <div className="mt-2 text-sm">
-                <p>Please check:</p>
-                <ul className="list-disc list-inside">
-                  <li>Backend server is running on port 5000</li>
-                  <li>CORS is properly configured</li>
-                  <li>API endpoint '/api/auth/me' exists</li>
-                </ul>
-              </div>
-            </div>
-          )}
+          <div className="w-16 h-16 border-4 border-[#D2ECC1] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="text-gray-600 text-lg">Initializing...</div>
         </div>
       </div>
     );
   }
 
   return (
-    <>
-      {/* If not logged in, blur home and show modal */}
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 transition-all duration-500">
       {!isLoggedIn && (
         <>
-          <div className="fixed inset-0 z-30 backdrop-blur-sm bg-black/30"></div>
-          {modalType === "login" && (
-            <LoginModal onClose={closeModal} onSwitchToSignup={switchToSignup} />
-          )}
-          {modalType === "signup" && (
-            <SignupModal onClose={closeModal} onSwitchToLogin={switchToLogin} />
-          )}
+          <div className="fixed inset-0 z-30 backdrop-blur-sm bg-black/30 animate-fadeIn"></div>
+          {modalType === "login" && <LoginModal onClose={closeModal} onSwitchToSignup={switchToSignup} />}
+          {modalType === "signup" && <SignupModal onClose={closeModal} onSwitchToLogin={switchToLogin} />}
         </>
       )}
 
-      {/* Topbar */}
-      <div className={`flex relative items-center justify-between p-4 ${darkMode ? 'bg-gray-900' : 'bg-white'} transition duration-300`}>
-        <Link to="/" className="mr-4">
-          <img
-            src="/logobr.png"
-            alt="logo"
-            className="h-10 ml-2 sm:ml-6 cursor-pointer hover:scale-105 transition-transform duration-200"
-          />
-        </Link>
-
-        {/* Search - Desktop only */}
-        <div className="hidden sm:flex items-center border border-gray-400 rounded-full px-4 py-1 w-full max-w-md mx-6 bg-[#D2ECC1]">
-          <Search className="w-5 h-5 text-gray-700 mr-2" />
-          <input
-            type="text"
-            placeholder="Search..."
-            className="bg-transparent outline-none text-gray-700 w-full"
-          />
+      {/* Header */}
+      <header className={`sticky top-0 z-20 backdrop-blur-md ${darkMode ? 'bg-gray-900/95' : 'bg-white/95'} border-b border-gray-200 dark:border-gray-700 transition-all duration-300`}>
+        <div className="flex items-center justify-between p-4">
+          <Link to="/" className="mr-4 group">
+            <img 
+              src="/logobr.png" 
+              alt="logo" 
+              className="h-10 ml-2 sm:ml-6 cursor-pointer group-hover:scale-105 transition-transform duration-200" 
+            />
+          </Link>
+          
+          <div className="hidden sm:flex items-center border border-gray-300 dark:border-gray-600 rounded-full px-4 py-2 w-full max-w-md mx-6 bg-[#D2ECC1] dark:bg-[#D2ECC1]/90 transition-all duration-300 hover:shadow-md">
+            <Search className="w-5 h-5 text-gray-700 mr-2" />
+            <input 
+              type="text" 
+              placeholder="Search books..." 
+              className="bg-transparent outline-none text-gray-700 w-full placeholder-gray-600" 
+            />
+          </div>
+          
+          <div className="flex items-center space-x-4 mr-4">
+            <User className="w-7 h-7 text-[#D2ECC1] cursor-pointer hover:scale-110 transition-transform duration-200" />
+            <button 
+              onClick={() => setDarkMode(!darkMode)} 
+              className="hidden sm:block p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200"
+            >
+              {darkMode ? 
+                <Sun className="w-6 h-6 text-yellow-400" /> : 
+                <Moon className="w-6 h-6 text-gray-600" />
+              }
+            </button>
+            <button 
+              onClick={toggleMenu}
+              className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200"
+            >
+              {menuOpen ? 
+                <X className="w-6 h-6 text-gray-700 dark:text-[#D2ECC1]" /> : 
+                <Menu className="w-6 h-6 text-gray-700 dark:text-[#D2ECC1]" />
+              }
+            </button>
+          </div>
         </div>
 
-        {/* Right icons */}
-        <div className="flex items-center space-x-4 mr-4">
-          <User className="w-7 h-7 text-[#D2ECC1] cursor-pointer" />
-
-          <button onClick={() => setDarkMode(!darkMode)} className="hidden sm:block">
-            {darkMode ? <Sun className="w-6 h-6 text-yellow-400" /> : <Moon className="w-6 h-6 text-gray-600" />}
-          </button>
-
-          <button onClick={toggleMenu}>
-            {menuOpen ? (
-              <X className="w-6 h-6 text-gray-700 dark:text-[#D2ECC1]" />
-            ) : (
-              <Menu className="w-6 h-6 text-gray-700 dark:text-[#D2ECC1]" />
-            )}
-          </button>
+        {/* Mobile search */}
+        <div className="sm:hidden px-4 pb-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-500" />
+            <input 
+              type="text" 
+              placeholder="Search books..." 
+              className="w-full pl-10 pr-4 py-3 rounded-full border border-gray-300 bg-white text-black outline-none focus:ring-2 focus:ring-[#D2ECC1] transition-all duration-200" 
+            />
+          </div>
         </div>
-      </div>
-
-      {/* Mobile search */}
-      <div className="sm:hidden px-4 py-2 bg-[#D2ECC1] transition-all">
-        <div className="relative">
-          <span className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-            <Search className="w-5 h-5 text-gray-500" />
-          </span>
-          <input
-            type="text"
-            placeholder="Search..."
-            className="w-full pl-10 pr-4 py-2 rounded-full border border-gray-400 bg-white text-black outline-none"
-          />
-        </div>
-      </div>
+      </header>
 
       {/* Sidebar */}
-      {menuOpen && <DropdownSidebar darkMode={darkMode} />}
-      {/*BookCard*/}
-      <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
-      {books.map(book => <BookCard key={book.id} book={book} />)}
+      <div className={`fixed top-0 right-0 h-full z-30 transform transition-transform duration-300 ease-in-out ${
+        menuOpen ? 'translate-x-0' : 'translate-x-full'
+      }`}>
+        {menuOpen && (
+          <DropdownSidebar 
+            darkMode={darkMode} 
+            filters={filters}
+            filterOptions={filterOptions}
+            onFiltersChange={updateFilters}
+            onClearFilters={clearFilters}
+            onClose={() => setMenuOpen(false)}
+          />
+        )}
       </div>
 
-      {/* Debug info - remove in production */}
-      {process.env.NODE_ENV === 'development' && connectionError && (
-        <div className="fixed bottom-4 right-4 p-3 bg-red-500 text-white rounded shadow-lg max-w-sm">
-          <p className="text-sm font-semibold">Backend Connection Issue:</p>
-          <p className="text-xs">{connectionError}</p>
+      {/* Main Content */}
+      <main className="container mx-auto px-4 py-6">
+        {/* Books Grid */}
+        <div className="relative">
+          {loading ? (
+            <div className="flex items-center justify-center py-20">
+              <div className="text-center">
+                <div className="w-12 h-12 border-4 border-[#D2ECC1] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                <div className="text-gray-500 text-lg">Loading amazing books...</div>
+              </div>
+            </div>
+          ) : (
+            <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
+              {books.length > 0 ? (
+                books.map((book, index) => (
+                  <div
+                    key={book._id}
+                    className="opacity-0 animate-slideUp"
+                    style={{
+                      animationDelay: `${index * 0.1}s`,
+                      animationFillMode: 'forwards'
+                    }}
+                  >
+                    <BookCard book={book} currentPage={currentPage} />
+                  </div>
+                ))
+              ) : (
+                <div className="col-span-full text-center py-20 animate-fadeIn">
+                  <div className="text-8xl mb-6 opacity-50">📚</div>
+                  <h3 className="text-2xl font-semibold text-gray-600 dark:text-gray-400 mb-2">No books found</h3>
+                  <p className="text-gray-500">Try adjusting your search or check back later</p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
-      )}
-    </>
+
+        {/* Pagination */}
+        {books.length > 0 && (
+          <div className="flex justify-center items-center space-x-4 mt-12 mb-8">
+            <button 
+              onClick={() => setPage(Math.max(currentPage - 1, 1))} 
+              className="p-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 shadow-sm" 
+              disabled={currentPage === 1}
+            >
+              <ChevronLeft className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+            </button>
+            <span className="font-semibold px-6 py-3 bg-[#D2ECC1] text-gray-800 rounded-lg shadow-sm">
+              {currentPage}
+            </span>
+            <button 
+              onClick={() => setPage(currentPage + 1)} 
+              className="p-3 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg transition-all duration-200 hover:scale-105 shadow-sm"
+            >
+              <ChevronRight className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+            </button>
+          </div>
+        )}
+      </main>
+
+      {/* Custom Animations */}
+      <style jsx>{`
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        
+        @keyframes slideUp {
+          from {
+            opacity: 0;
+            transform: translateY(30px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        
+        .animate-fadeIn {
+          animation: fadeIn 0.5s ease-out;
+        }
+        
+        .animate-slideUp {
+          animation: slideUp 0.6s ease-out;
+        }
+        
+        @media (prefers-reduced-motion: reduce) {
+          .animate-fadeIn,
+          .animate-slideUp {
+            animation: none;
+            opacity: 1;
+          }
+        }
+      `}</style>
+    </div>
   );
 };
 

@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-
+import { useAuth } from "../context/AuthContext";
 const LoginModal = ({ onClose, onSwitchToSignup }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-
+  const { setIsLoggedIn } = useAuth();
+  
   const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
@@ -29,7 +30,7 @@ const LoginModal = ({ onClose, onSwitchToSignup }) => {
       
       // Token ko localStorage me save karo
       localStorage.setItem('token', res.data.token);
-      
+      setIsLoggedIn(true);
       // Success ke baad modal band karo
       onClose();
       

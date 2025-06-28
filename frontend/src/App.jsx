@@ -4,12 +4,12 @@ import viteLogo from '/vite.svg'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import './App.css'
 import Home from './components/Home'
-import BookDetail from './components/BookDetails';
+import BookDetail from './components/BookDetail';
 function App() {
   return (
   <Routes>
     <Route path="/" element={<Home />} />
-    <Route path="/book/:id" element={<BookDetail />} /> {/* ✅ */}
+    <Route path="/books/:id" element={<BookDetail />} /> {/* ✅ */}
   </Routes>
 
   )
