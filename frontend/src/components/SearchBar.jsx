@@ -1,31 +1,19 @@
+// src/components/SearchBar.jsx
 import { useState, useEffect } from "react";
 import { Search } from "lucide-react";
 
 const SearchBar = ({ onSearch, initialQuery = "" }) => {
   const [query, setQuery] = useState(initialQuery);
 
-  // Update local state when initialQuery changes (from URL params)
   useEffect(() => {
     setQuery(initialQuery);
   }, [initialQuery]);
 
   const handleSearch = (e) => {
     e.preventDefault();
-    const searchTerm = query.trim();
-    
-    // Call the parent component's search function
+    const trimmed = query.trim();
     if (onSearch) {
-      onSearch(searchTerm);
-    }
-  };
-
-  const handleInputChange = (e) => {
-    setQuery(e.target.value);
-  };
-
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter') {
-      handleSearch(e);
+      onSearch(trimmed);
     }
   };
 
@@ -39,8 +27,8 @@ const SearchBar = ({ onSearch, initialQuery = "" }) => {
         type="text"
         placeholder="Search books by title or author..."
         value={query}
-        onChange={handleInputChange}
-        onKeyPress={handleKeyPress}
+        onChange={(e) => setQuery(e.target.value)}
+        onKeyDown={(e) => e.key === "Enter" && handleSearch(e)}
         className="bg-transparent outline-none w-full text-gray-800 placeholder-gray-500"
       />
       <button
