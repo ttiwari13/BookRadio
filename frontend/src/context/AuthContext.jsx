@@ -1,39 +1,50 @@
-import { createContext, useContext, useEffect, useState } from "react";
-import axios from "axios";
+import { createContext, useContext, useState, useEffect } from "react";
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
-  const [isLoggedIn, setIsLoggedIn] = useState(null); // null = loading
   const [user, setUser] = useState(null);
+  const [token, setToken] = useState(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false); // ✅ Add this
+
+  const login = (jwtToken, userData) => {
+    setToken(jwtToken);
+    setUser(userData);
+    setIsLoggedIn(true); // ✅ Update login status
+    localStorage.setItem("token", jwtToken);
+    localStorage.setItem("user", JSON.stringify(userData));
+  };
+
+  const logout = () => {
+    setToken(null);
+    setUser(null);
+    setIsLoggedIn(false); // ✅ Reset login status
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+  };
 
   useEffect(() => {
-    const checkAuth = async () => {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        setIsLoggedIn(false);
-        return;
-      }
+    const savedToken = localStorage.getItem("token");
+    const savedUser = localStorage.getItem("user");
 
-      try {
-        const res = await axios.get("http://localhost:5000/api/auth/me", {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        });
-        setIsLoggedIn(true);
-        setUser(res.data);
-      } catch (err) {
-        console.error("Auth check failed:", err.message);
-        setIsLoggedIn(false);
-      }
-    };
-
-    checkAuth();
+    if (savedToken && savedUser) {
+      setToken(savedToken);
+      setUser(JSON.parse(savedUser));
+      setIsLoggedIn(true); // ✅ Set on reload
+    }
   }, []);
 
   return (
-    <AuthContext.Provider value={{ isLoggedIn, setIsLoggedIn, user, setUser }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        token,
+        login,
+        logout,
+        isLoggedIn,
+        setIsLoggedIn, // ✅ Make sure this is exported
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

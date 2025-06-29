@@ -1,15 +1,30 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { X } from 'lucide-react';
+import axios from "axios";
 
 const DropdownSidebar = ({ 
   darkMode, 
   filters, 
-  filterOptions, 
+  filterOptions: initialOptions, 
   onFiltersChange, 
   onClearFilters,
   onClose 
 }) => {
-  
+  const [filterOptions, setFilterOptions] = useState(initialOptions || {
+    languages: [],
+    genres: [],
+    authors: [],
+    durations: []
+  });
+
+  useEffect(() => {
+    if (!initialOptions) {
+      axios.get('/api/books/filters')
+        .then(res => setFilterOptions(res.data))
+        .catch(err => console.error("Error fetching filter options:", err));
+    }
+  }, [initialOptions]);
+
   const handleFilterChange = (filterType, value) => {
     const newFilters = {
       ...filters,
@@ -20,7 +35,6 @@ const DropdownSidebar = ({
 
   const hasActiveFilters = Object.values(filters).some(filter => filter !== '');
 
-  // Safe access to filterOptions with fallbacks
   const languages = filterOptions?.languages || [];
   const genres = filterOptions?.genres || [];
   const authors = filterOptions?.authors || [];
@@ -132,7 +146,7 @@ const DropdownSidebar = ({
       </div>
 
       {/* Duration Dropdown */}
-      <div className="mb-6">
+   {/*  <div className="mb-6">
         <label className="block mb-2 font-medium text-sm">⏱️ Duration</label>
         <select 
           value={filters.duration || ''}
@@ -155,7 +169,7 @@ const DropdownSidebar = ({
           )}
         </select>
       </div>
-
+    */}
       {/* Active Filters Display */}
       {hasActiveFilters && (
         <div className="border-t pt-4 border-gray-300 dark:border-gray-600">

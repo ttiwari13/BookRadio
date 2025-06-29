@@ -1,31 +1,32 @@
 import { useState, useEffect } from "react";
 import { Search } from "lucide-react";
-import { useNavigate, useLocation } from "react-router-dom";
 
-const SearchBar = () => {
-  const [query, setQuery] = useState("");
-  const navigate = useNavigate();
-  const location = useLocation();
+const SearchBar = ({ onSearch, initialQuery = "" }) => {
+  const [query, setQuery] = useState(initialQuery);
 
-  // 👉 Load existing search query from URL on mount
+  // Update local state when initialQuery changes (from URL params)
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const existingQuery = params.get("q") || "";
-    setQuery(existingQuery);
-  }, [location.search]);
+    setQuery(initialQuery);
+  }, [initialQuery]);
 
   const handleSearch = (e) => {
     e.preventDefault();
-    const params = new URLSearchParams(location.search);
-
-    if (query.trim()) {
-      params.set("q", query.trim());
-    } else {
-      params.delete("q");
+    const searchTerm = query.trim();
+    
+    // Call the parent component's search function
+    if (onSearch) {
+      onSearch(searchTerm);
     }
+  };
 
-    params.delete("page"); // Reset pagination on search
-    navigate(`/?${params.toString()}`);
+  const handleInputChange = (e) => {
+    setQuery(e.target.value);
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      handleSearch(e);
+    }
   };
 
   return (
@@ -38,9 +39,16 @@ const SearchBar = () => {
         type="text"
         placeholder="Search books by title or author..."
         value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        className="bg-transparent outline-none w-full text-gray-800"
+        onChange={handleInputChange}
+        onKeyPress={handleKeyPress}
+        className="bg-transparent outline-none w-full text-gray-800 placeholder-gray-500"
       />
+      <button
+        type="submit"
+        className="ml-2 text-gray-600 hover:text-gray-800 transition-colors"
+      >
+        <Search size={18} />
+      </button>
     </form>
   );
 };

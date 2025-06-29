@@ -276,6 +276,16 @@ bookSchema.methods.updateGenres = function(genres) {
   }
   return this.save();
 };
+// models/Book.js
+bookSchema.statics.getFilterOptions = async function () {
+  const languages = await this.distinct("language", { language: { $ne: null } });
+  const genres = await this.distinct("genre", { genre: { $ne: null } });
+  const authors = await this.distinct("author", { author: { $ne: null } });
+  const durations = await this.distinct("durationCategory", { durationCategory: { $ne: null } });
+
+  return { languages, genres, authors, durations };
+};
+
 
 // ✅ Export the model
 const Book = mongoose.model('Book', bookSchema);
