@@ -1,96 +1,283 @@
+// models/Book.js - Enhanced Book model with proper genre support
 const mongoose = require('mongoose');
 
 const episodeSchema = new mongoose.Schema({
-  title: { type: String, required: true, trim: true },
-  duration: { type: Number, required: true }, // Duration in minutes for easier filtering
-  language: { type: String, required: true },
-  audioUrl: { type: String, required: true },
-  episodeNumber: { type: Number },
-}, {
-  timestamps: true
-});
+  title: {
+    type: String,
+    required: true
+  },
+  audioUrl: {
+    type: String,
+    required: true
+  },
+  duration: {
+    type: Number, // in minutes
+    required: true,
+    min: 0
+  },
+  language: {
+    type: String,
+    default: 'English'
+  },
+  episodeNumber: {
+    type: Number,
+    required: true
+  }
+}, { _id: false });
 
 const bookSchema = new mongoose.Schema({
-  title: { type: String, required: true, trim: true },
-  author: { type: String, required: true, trim: true },
-  description: { type: String, trim: true },
-  language: { type: String, required: true },
-  year: { type: Number, min: 1000, max: new Date().getFullYear() },
-  
-  // IMPROVED FOR FILTERING
-  genre: { type: String, required: true }, // Specific genre field for dropdown
-  duration: { type: Number, required: true }, // Total duration in minutes for range filtering
-  durationCategory: { 
-    type: String, 
-    enum: ['short', 'medium', 'long'], // Pre-categorized for easier dropdown filtering
+  title: {
+    type: String,
+    required: true,
+    trim: true,
+    index: true // For search performance
+  },
+  author: {
+    type: String,
+    required: true,
+    trim: true,
+    index: true // For search performance
+  },
+  description: {
+    type: String,
+    required: true
+  },
+  language: {
+    type: String,
+    default: 'English',
+    index: true
+  },
+  year: {
+    type: Number,
+    min: 1000,
+    max: new Date().getFullYear(),
+    index: true
+  },
+  duration: {
+    type: Number, // Total duration in minutes
+    required: true,
+    min: 0
   },
   
-  image: { type: String },
-  tags: [{ type: String, trim: true }], // Keep for additional tagging
-  project_id: { type: Number, required: true, index: true },
-  episodes: [episodeSchema],
-}, {
-  timestamps: true
-});
-
-// INDEXES FOR EFFICIENT FILTERING
-bookSchema.index({ language: 1 });
-bookSchema.index({ genre: 1 });
-bookSchema.index({ author: 1 });
-bookSchema.index({ duration: 1 });
-bookSchema.index({ durationCategory: 1 });
-bookSchema.index({ project_id: 1 });
-
-// VIRTUAL FOR DYNAMIC DURATION CATEGORY (if you prefer this approach)
-bookSchema.virtual('computedDurationCategory').get(function() {
-  if (this.duration <= 120) return 'short';     // 0-2 hours
-  if (this.duration <= 480) return 'medium';    // 2-8 hours  
-  return 'long';                                 // 8+ hours
-});
-
-// STATIC METHODS FOR DROPDOWN DATA
-bookSchema.statics.getFilterOptions = async function() {
-  const [languages, genres, authors] = await Promise.all([
-    this.distinct('language'),
-    this.distinct('genre'),
-    this.distinct('author')
-  ]);
+  // ✅ Enhanced Genre Support
+  genre: {
+    type: String,
+    required: true,
+    default: 'Unknown',
+    index: true // Primary genre for quick filtering
+  },
+  tags: [{
+    type: String,
+    trim: true,
+    index: true // All genres/tags for detailed filtering
+  }],
   
-  return {
-    languages: languages.sort(),
-    genres: genres.sort(),
-    authors: authors.sort(),
-    durations: [
-      { label: 'Short (0-2 hours)', value: 'short' },
-      { label: 'Medium (2-8 hours)', value: 'medium' },
-      { label: 'Long (8+ hours)', value: 'long' }
+  // ✅ Genre Metadata (for debugging and analysis)
+  detectedGenres: [{
+    type: String,
+    trim: true
+  }],
+  scrapedGenres: [{
+    type: String,
+    trim: true
+  }],
+  
+  // Media and Links
+  image: {
+    type: String,
+    default: ''
+  },
+  librivoxUrl: {
+    type: String,
+    default: ''
+  },
+  rssUrl: {
+    type: String,
+    default: ''
+  },
+  
+  // LibriVox Specific
+  project_id: {
+    type: String,
+    required: true,
+    unique: true,
+    index: true
+  },
+  totalSections: {
+    type: Number,
+    default: 0
+  },
+  
+  // Audio Episodes
+  episodes: [episodeSchema],
+  
+  // Metadata
+  createdAt: {
+    type: Date,
+    default: Date.now
+  },
+  lastUpdated: {
+    type: Date,
+    default: Date.now
+  },
+  
+  // Computed fields for search and filtering
+  searchText: {
+    type: String,
+    index: 'text' // Full-text search index
+  },
+  
+  // Analytics fields
+  popularity: {
+    type: Number,
+    default: 0
+  },
+  rating: {
+    type: Number,
+    min: 0,
+    max: 5,
+    default: 0
+  }
+}, {
+  timestamps: true,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
+});
+
+// ✅ Indexes for performance
+bookSchema.index({ genre: 1, language: 1 });
+bookSchema.index({ tags: 1, year: 1 });
+bookSchema.index({ author: 1, title: 1 });
+bookSchema.index({ duration: 1, genre: 1 });
+bookSchema.index({ createdAt: -1 });
+
+// ✅ Pre-save middleware to update search text and computed fields
+bookSchema.pre('save', function(next) {
+  // Update search text for full-text search
+  this.searchText = `${this.title} ${this.author} ${this.description} ${this.tags.join(' ')}`;
+  
+  // Update lastUpdated
+  this.lastUpdated = new Date();
+  
+  // Ensure we have at least one genre
+  if (!this.tags || this.tags.length === 0) {
+    this.tags = [this.genre || 'Unknown'];
+  }
+  
+  // Ensure primary genre is in tags
+  if (this.genre && !this.tags.includes(this.genre)) {
+    this.tags.unshift(this.genre);
+  }
+  
+  next();
+});
+
+// ✅ Virtual fields
+bookSchema.virtual('totalEpisodes').get(function() {
+  return this.episodes ? this.episodes.length : 0;
+});
+
+bookSchema.virtual('durationHours').get(function() {
+  return Math.round((this.duration / 60) * 10) / 10; // Round to 1 decimal
+});
+
+bookSchema.virtual('hasAudio').get(function() {
+  return this.episodes && this.episodes.length > 0;
+});
+
+bookSchema.virtual('genreList').get(function() {
+  return this.tags && this.tags.length > 0 ? this.tags : [this.genre];
+});
+
+// ✅ Static methods for common queries
+bookSchema.statics.findByGenre = function(genre, options = {}) {
+  const { limit = 20, skip = 0, sortBy = 'title' } = options;
+  
+  return this.find({
+    $or: [
+      { genre: new RegExp(genre, 'i') },
+      { tags: new RegExp(genre, 'i') }
     ]
-  };
+  })
+  .limit(limit)
+  .skip(skip)
+  .sort(sortBy);
 };
 
-// STATIC METHOD FOR FILTERED SEARCH
-bookSchema.statics.findFiltered = function(filters) {
-  const query = {};
+bookSchema.statics.searchBooks = function(query, options = {}) {
+  const { limit = 20, skip = 0, genre, author, year } = options;
   
-  if (filters.language) query.language = filters.language;
-  if (filters.genre) query.genre = filters.genre;
-  if (filters.author) query.author = filters.author;
-  if (filters.duration) {
-    // Handle duration category filtering
-    switch(filters.duration) {
-      case 'short':
-        query.duration = { $lte: 120 };
-        break;
-      case 'medium':
-        query.duration = { $gt: 120, $lte: 480 };
-        break;
-      case 'long':
-        query.duration = { $gt: 480 };
-        break;
+  let searchQuery = {};
+  
+  // Text search
+  if (query) {
+    searchQuery.$text = { $search: query };
+  }
+  
+  // Filter by genre
+  if (genre) {
+    searchQuery.$or = [
+      { genre: new RegExp(genre, 'i') },
+      { tags: new RegExp(genre, 'i') }
+    ];
+  }
+  
+  // Filter by author
+  if (author) {
+    searchQuery.author = new RegExp(author, 'i');
+  }
+  
+  // Filter by year
+  if (year) {
+    if (typeof year === 'object') {
+      searchQuery.year = year; // { $gte: 1900, $lte: 2000 }
+    } else {
+      searchQuery.year = year;
     }
   }
   
-  return this.find(query);
+  return this.find(searchQuery)
+    .limit(limit)
+    .skip(skip)
+    .sort({ score: { $meta: "textScore" }, title: 1 });
 };
 
-module.exports = mongoose.model('Book', bookSchema);
+bookSchema.statics.getGenreStats = function() {
+  return this.aggregate([
+    { $unwind: "$tags" },
+    { $group: { _id: "$tags", count: { $sum: 1 } } },
+    { $sort: { count: -1 } }
+  ]);
+};
+
+bookSchema.statics.getPopularBooks = function(limit = 10) {
+  return this.find({ episodes: { $exists: true, $not: { $size: 0 } } })
+    .sort({ popularity: -1, rating: -1, title: 1 })
+    .limit(limit);
+};
+
+// ✅ Instance methods
+bookSchema.methods.addGenre = function(genre) {
+  if (!this.tags.includes(genre)) {
+    this.tags.push(genre);
+  }
+  return this.save();
+};
+
+bookSchema.methods.removeGenre = function(genre) {
+  this.tags = this.tags.filter(tag => tag !== genre);
+  return this.save();
+};
+
+bookSchema.methods.updateGenres = function(genres) {
+  this.tags = [...new Set(genres)]; // Remove duplicates
+  if (this.tags.length > 0) {
+    this.genre = this.tags[0]; // Set primary genre
+  }
+  return this.save();
+};
+
+// ✅ Export the model
+const Book = mongoose.model('Book', bookSchema);
+
+module.exports = Book;

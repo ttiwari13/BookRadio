@@ -175,7 +175,7 @@ const Home = () => {
     checkLogin();
   }, [setIsLoggedIn]);
 
-  // Fetch books with caching - now uses currentPage from URL and filters
+  // FIXED: Fetch books with proper filter handling
   useEffect(() => {
     const fetchBooks = async () => {
       // Show loading only on initial load
@@ -190,12 +190,17 @@ const Home = () => {
           limit: '12'
         });
         
-        // Add filters to query if they exist
-        Object.entries(filters).forEach(([key, value]) => {
-          if (value) {
-            queryParams.set(key, value);
-          }
-        });
+        // Check if any filters are active
+        const hasActiveFilters = Object.values(filters).some(value => value && value.trim() !== '');
+        
+        // Only add filters to query if they have actual values
+        if (hasActiveFilters) {
+          Object.entries(filters).forEach(([key, value]) => {
+            if (value && value.trim() !== '') {
+              queryParams.set(key, value);
+            }
+          });
+        }
         
         const res = await axios.get(`http://localhost:5000/api/books?${queryParams.toString()}`, {
           timeout: 10000 // 10 second timeout
@@ -203,14 +208,24 @@ const Home = () => {
         
         if (Array.isArray(res.data)) {
           setBooks(res.data);
-        } else if (res.data.books) {
+        } else if (res.data.books && Array.isArray(res.data.books)) {
           setBooks(res.data.books);
+        } else if (res.data.data && Array.isArray(res.data.data)) {
+          setBooks(res.data.data);
         } else {
+          console.warn('⚠️ Unexpected books response format:', res.data);
           setBooks([]);
         }
       } catch (error) {
         console.error("❌ Error fetching books:", error.message);
         setBooks([]);
+        
+        // Set connection error if it's a network issue
+        if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+          setConnectionError('Connection timeout. Please check your internet connection.');
+        } else if (error.code === 'ERR_NETWORK') {
+          setConnectionError('Network error. Please check if the server is running.');
+        }
       } finally {
         setLoading(false);
         setInitialLoad(false);
@@ -360,6 +375,21 @@ const Home = () => {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-6">
+        {/* Connection Error */}
+        {connectionError && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg mb-6">
+            <strong>Connection Error:</strong> {connectionError}
+            <button 
+              onClick={() => window.location.reload()} 
+              className="ml-2 underline hover:no-underline"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
+
+
         {/* Books Grid */}
         <div className="relative">
           {loading ? (
@@ -387,8 +417,23 @@ const Home = () => {
               ) : (
                 <div className="col-span-full text-center py-20 animate-fadeIn">
                   <div className="text-8xl mb-6 opacity-50">📚</div>
-                  <h3 className="text-2xl font-semibold text-gray-600 dark:text-gray-400 mb-2">No books found</h3>
-                  <p className="text-gray-500">Try adjusting your search or check back later</p>
+                  <h3 className="text-2xl font-semibold text-gray-600 dark:text-gray-400 mb-2">
+                    {Object.values(filters).some(f => f) ? 'No books match your filters' : 'No books found'}
+                  </h3>
+                  <p className="text-gray-500 mb-4">
+                    {Object.values(filters).some(f => f) 
+                      ? 'Try adjusting your filters or search terms' 
+                      : 'Check back later or contact support if this persists'
+                    }
+                  </p>
+                  {Object.values(filters).some(f => f) && (
+                    <button 
+                      onClick={clearFilters}
+                      className="px-6 py-2 bg-[#D2ECC1] text-gray-800 rounded-lg hover:bg-[#C1E5B0] transition-colors duration-200"
+                    >
+                      Clear All Filters
+                    </button>
+                  )}
                 </div>
               )}
             </div>

@@ -69,11 +69,15 @@ const DropdownSidebar = ({
             }`}
         >
           <option value="">All Languages</option>
-          {languages.map((language) => (
-            <option key={language} value={language}>
-              {language}
-            </option>
-          ))}
+          {languages.length > 0 ? (
+            languages.map((language) => (
+              <option key={language} value={language}>
+                {language}
+              </option>
+            ))
+          ) : (
+            <option disabled>No languages found</option>
+          )}
         </select>
       </div>
 
@@ -90,11 +94,15 @@ const DropdownSidebar = ({
             }`}
         >
           <option value="">All Genres</option>
-          {genres.map((genre) => (
-            <option key={genre} value={genre}>
-              {genre}
-            </option>
-          ))}
+          {genres.length > 0 ? (
+            genres.map((genre) => (
+              <option key={genre} value={genre}>
+                {genre}
+              </option>
+            ))
+          ) : (
+            <option disabled>No genres found</option>
+          )}
         </select>
       </div>
 
@@ -111,11 +119,15 @@ const DropdownSidebar = ({
             }`}
         >
           <option value="">All Authors</option>
-          {authors.map((author) => (
-            <option key={author} value={author}>
-              {author}
-            </option>
-          ))}
+          {authors.length > 0 ? (
+            authors.map((author) => (
+              <option key={author} value={author}>
+                {author}
+              </option>
+            ))
+          ) : (
+            <option disabled>No authors found</option>
+          )}
         </select>
       </div>
 
@@ -132,11 +144,15 @@ const DropdownSidebar = ({
             }`}
         >
           <option value="">All Durations</option>
-          {durations.map((duration) => (
-            <option key={duration} value={duration}>
-              {duration}
-            </option>
-          ))}
+          {durations.length > 0 ? (
+            durations.map((duration) => (
+              <option key={duration} value={duration}>
+                {duration}
+              </option>
+            ))
+          ) : (
+            <option disabled>No durations found</option>
+          )}
         </select>
       </div>
 
@@ -147,23 +163,19 @@ const DropdownSidebar = ({
           <div className="flex flex-wrap gap-2">
             {Object.entries(filters).map(([key, value]) => {
               if (!value) return null;
-              
-              // Format the display value for better readability
-              const displayValue = key === 'duration' ? value : value;
               const filterLabel = {
                 language: '📚',
                 genre: '🎭', 
                 author: '✍️',
                 duration: '⏱️'
               }[key] || '';
-
               return (
                 <span
                   key={key}
                   className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-[#D2ECC1] text-gray-800"
                 >
                   <span className="mr-1">{filterLabel}</span>
-                  {displayValue}
+                  {value}
                   <button
                     onClick={() => handleFilterChange(key, '')}
                     className="ml-1 hover:text-red-600 transition-colors"

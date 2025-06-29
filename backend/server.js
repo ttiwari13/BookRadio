@@ -7,6 +7,7 @@ dotenv.config();
 const connectDB = require("./config/db");
 const cors = require('cors');
 const bookRoutes = require('./routes/bookRoutes');
+
 // Connect to MongoDB
 connectDB();
 
@@ -34,7 +35,6 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Import routes
 const authRoutes = require('./routes/authRoutes');
 const profileRoutes = require('./routes/profile');
-
 // Home route for testing
 app.get("/", (req, res) => {
   res.send("Book Radio is running...");
