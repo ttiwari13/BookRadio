@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/useAuth";
+
 import { Eye, EyeOff, AlertCircle, Loader2 } from 'lucide-react';
 
 const LoginModal = ({ onClose, onSwitchToSignup }) => {

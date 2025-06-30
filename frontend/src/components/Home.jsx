@@ -1,12 +1,16 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Search, User, Sun, Moon, Menu, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import {
+  Search, User, Sun, Moon, Menu, X, ChevronLeft, ChevronRight
+} from 'lucide-react';
 import DropdownSidebar from "../components/DropdownSidebar";
 import LoginModal from "../components/LoginModal";
 import SignupModal from "../components/SignupModal";
 import BookCard from './BookCard';
 import axios from "axios";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../context/useAuth";
+
+import Profile from './Profile';
 
 const Home = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -21,17 +25,13 @@ const Home = () => {
   const [initialLoad, setInitialLoad] = useState(true);
   const [authChecked, setAuthChecked] = useState(false);
   const authCheckRef = useRef(false);
+  const [showProfile, setShowProfile] = useState(false);
 
   const [filters, setFilters] = useState({
-    language: '',
-    genre: '',
-    duration: '',
-    author: ''
+    language: '', genre: '', duration: '', author: ''
   });
   const [filterOptions, setFilterOptions] = useState({
-    languages: [],
-    genres: [],
-    authors: []
+    languages: [], genres: [], authors: []
   });
 
   const currentPage = parseInt(searchParams.get('page')) || 1;
@@ -48,6 +48,7 @@ const Home = () => {
   }, [searchParams]);
 
   const toggleMenu = () => setMenuOpen(prev => !prev);
+  const toggleProfile = () => setShowProfile(prev => !prev);
 
   const setPage = (newPage) => {
     const params = new URLSearchParams(searchParams);
@@ -64,11 +65,8 @@ const Home = () => {
     const params = new URLSearchParams(searchParams);
     params.delete('page');
     Object.entries(newFilters).forEach(([key, value]) => {
-      if (value) {
-        params.set(key, value);
-      } else {
-        params.delete(key);
-      }
+      if (value) params.set(key, value);
+      else params.delete(key);
     });
     setSearchParams(params);
   };
@@ -104,8 +102,7 @@ const Home = () => {
         setAuthChecked(true);
         try {
           const res = await axios.get("http://localhost:5000/api/auth/me", {
-            headers: { Authorization: `Bearer ${token}` },
-            timeout: 8000
+            headers: { Authorization: `Bearer ${token}` }, timeout: 8000
           });
           if (!res.data) {
             localStorage.removeItem("token");
@@ -133,19 +130,13 @@ const Home = () => {
       if (initialLoad) setLoading(true);
       try {
         const queryParams = new URLSearchParams();
-        if (searchQuery.trim()) {
-          queryParams.set("q", searchQuery.trim());
-        }
+        if (searchQuery.trim()) queryParams.set("q", searchQuery.trim());
         Object.entries(filters).forEach(([key, value]) => {
-          if (value && value.trim() !== '') {
-            queryParams.set(key, value);
-          }
+          if (value && value.trim() !== '') queryParams.set(key, value);
         });
         queryParams.set('page', currentPage.toString());
         queryParams.set('limit', '12');
-        const res = await axios.get(`http://localhost:5000/api/books?${queryParams.toString()}`, {
-          timeout: 10000
-        });
+        const res = await axios.get(`http://localhost:5000/api/books?${queryParams.toString()}`, { timeout: 10000 });
         const data = res.data;
         setBooks(Array.isArray(data) ? data : data.books || data.data || []);
       } catch (error) {
@@ -245,12 +236,18 @@ const Home = () => {
           </div>
 
           <div className="flex items-center gap-4">
-            <User />
-            <button onClick={() => setDarkMode(!darkMode)}>
-              {darkMode ? <Sun /> : <Moon />}
-            </button>
-            <button onClick={toggleMenu}>{menuOpen ? <X /> : <Menu />}</button>
-          </div>
+  <button onClick={toggleProfile}>
+    <User />
+  </button>
+
+  {/* Show theme toggle only on desktop */}
+  <button onClick={() => setDarkMode(!darkMode)} className="hidden sm:inline">
+    {darkMode ? <Sun /> : <Moon />}
+  </button>
+
+  <button onClick={toggleMenu}>{menuOpen ? <X /> : <Menu />}</button>
+</div>
+
         </div>
 
         {/* Mobile Search */}
@@ -292,7 +289,6 @@ const Home = () => {
           </div>
         )}
 
-        {/* Book Grid */}
         {loading ? (
           <div className="text-center py-20">Loading...</div>
         ) : (
@@ -322,6 +318,21 @@ const Home = () => {
           </div>
         )}
       </main>
+
+      {/* Profile Panel Drawer */}
+      {showProfile && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex justify-end">
+          <div className="w-full max-w-md h-full bg-white dark:bg-gray-900 p-6 overflow-y-auto shadow-xl">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold">Profile</h2>
+              <button onClick={toggleProfile} className="text-xl text-black dark:text-white">
+                <X />
+              </button>
+            </div>
+            <Profile />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

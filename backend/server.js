@@ -30,8 +30,11 @@ app.use(cors({
 app.options('*', cors());
 
 // FIX: Use absolute path for static files in Express v5
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
+app.use('/uploads', express.static('uploads', {
+  setHeaders: (res, path) => {
+    res.setHeader('Cache-Control', 'no-cache');
+  }
+}));
 // Import routes
 const authRoutes = require('./routes/authRoutes');
 const profileRoutes = require('./routes/profile');

@@ -1,16 +1,17 @@
-import { createContext, useContext, useState, useEffect } from "react";
+// src/context/AuthContext.jsx
+import { createContext, useState, useEffect } from "react";
 
-const AuthContext = createContext();
+export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null);
-  const [isLoggedIn, setIsLoggedIn] = useState(false); // ✅ Add this
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   const login = (jwtToken, userData) => {
     setToken(jwtToken);
     setUser(userData);
-    setIsLoggedIn(true); // ✅ Update login status
+    setIsLoggedIn(true);
     localStorage.setItem("token", jwtToken);
     localStorage.setItem("user", JSON.stringify(userData));
   };
@@ -18,7 +19,7 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     setToken(null);
     setUser(null);
-    setIsLoggedIn(false); // ✅ Reset login status
+    setIsLoggedIn(false);
     localStorage.removeItem("token");
     localStorage.removeItem("user");
   };
@@ -26,28 +27,24 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const savedToken = localStorage.getItem("token");
     const savedUser = localStorage.getItem("user");
-
     if (savedToken && savedUser) {
       setToken(savedToken);
       setUser(JSON.parse(savedUser));
-      setIsLoggedIn(true); // ✅ Set on reload
+      setIsLoggedIn(true);
     }
   }, []);
 
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem("user", JSON.stringify(user));
+    }
+  }, [user]);
+
   return (
     <AuthContext.Provider
-      value={{
-        user,
-        token,
-        login,
-        logout,
-        isLoggedIn,
-        setIsLoggedIn, // ✅ Make sure this is exported
-      }}
+      value={{ user, setUser, token, login, logout, isLoggedIn, setIsLoggedIn }}
     >
       {children}
     </AuthContext.Provider>
   );
 };
-
-export const useAuth = () => useContext(AuthContext);
