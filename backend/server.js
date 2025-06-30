@@ -7,7 +7,7 @@ dotenv.config();
 const connectDB = require("./config/db");
 const cors = require('cors');
 const bookRoutes = require('./routes/bookRoutes');
-
+const feedbackRoutes = require('./routes/feedback');
 // Connect to MongoDB
 connectDB();
 
@@ -50,6 +50,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/profile', profileRoutes);
 // BookRoutes
 app.use('/api/books', bookRoutes);
+app.use('/api/feedback', feedbackRoutes);
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);

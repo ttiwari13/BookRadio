@@ -183,7 +183,7 @@ const LoginModal = ({ onClose, onSwitchToSignup }) => {
           {/* Submit Button */}
           <button
             type="submit"
-            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white p-3 rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-2"
+            className="w-full bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white p-3 rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-2"
             disabled={loading}
           >
             {loading && <Loader2 className="w-5 h-5 animate-spin" />}
@@ -200,7 +200,7 @@ const LoginModal = ({ onClose, onSwitchToSignup }) => {
               className="text-blue-600 hover:text-blue-700 font-medium hover:underline transition-colors"
               disabled={loading}
             >
-              Sign up here
+              Sign up 
             </button>
           </p>
           

@@ -9,8 +9,9 @@ import SignupModal from "../components/SignupModal";
 import BookCard from './BookCard';
 import axios from "axios";
 import { useAuth } from "../context/useAuth";
-
+import Footer from './Footer';
 import Profile from './Profile';
+import Feedback from './FloatingFeedbackButton';
 
 const Home = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -215,58 +216,57 @@ const Home = () => {
         </>
       )}
 
-      {/* Header */}
       <header className="sticky top-0 z-20 bg-white dark:bg-gray-900 border-b shadow">
-        <div className="flex justify-between items-center p-4 container mx-auto">
-          <Link to="/">
-            <img src="/logobr.png" alt="logo" className="h-10" />
-          </Link>
+  <div className="container mx-auto flex justify-between items-center px-4 py-3 gap-4">
+    {/* Logo */}
+    <Link to="/" className="shrink-0">
+      <img src="/logobr.png" alt="logo" className="h-10" />
+    </Link>
 
-          {/* Search (Desktop) */}
-          <div className={`hidden sm:flex items-center px-4 py-2 rounded-full w-full max-w-md ${darkMode ? 'bg-gray-800' : 'bg-gray-200'}`}>
-            <Search className="mr-2" />
-            <input
-              type="text"
-              value={searchQuery}
-              placeholder="Search books..."
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-              className={`bg-transparent outline-none w-full text-sm ${darkMode ? 'text-white' : 'text-black'}`}
-            />
-          </div>
+    {/* Search Bar - Desktop */}
+    <div className={`hidden sm:flex flex-grow max-w-md items-center bg-gray-100 dark:bg-gray-800 px-4 py-2 rounded-full`}>
+      <Search className="mr-2 text-gray-500 dark:text-gray-300" />
+      <input
+        type="text"
+        value={searchQuery}
+        placeholder="Search books..."
+        onChange={(e) => setSearchQuery(e.target.value)}
+        onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+        className="bg-transparent outline-none w-full text-sm dark:text-white text-black"
+      />
+    </div>
 
-          <div className="flex items-center gap-4">
-  <button onClick={toggleProfile}>
-    <User />
-  </button>
+    {/* Action Buttons */}
+    <div className="flex items-center gap-3 shrink-0">
+      <button onClick={toggleProfile} className="p-2 hover:bg-gray-200 dark:hover:bg-gray-800 rounded-full">
+        <User className="w-5 h-5" />
+      </button>
+      <button onClick={() => setDarkMode(!darkMode)} className="hidden sm:inline p-2 hover:bg-gray-200 dark:hover:bg-gray-800 rounded-full">
+        {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+      </button>
+      <button onClick={toggleMenu} className="p-2 hover:bg-gray-200 dark:hover:bg-gray-800 rounded-full">
+        {menuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+      </button>
+    </div>
+  </div>
 
-  {/* Show theme toggle only on desktop */}
-  <button onClick={() => setDarkMode(!darkMode)} className="hidden sm:inline">
-    {darkMode ? <Sun /> : <Moon />}
-  </button>
+  {/* Search Bar - Mobile */}
+  <div className="sm:hidden px-4 pb-3">
+    <div className="relative">
+      <Search className="absolute left-3 top-3 text-gray-500" />
+      <input
+        type="text"
+        placeholder="Search books..."
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+        className="w-full pl-10 pr-4 py-3 rounded-full border dark:border-gray-700 bg-white dark:bg-gray-800 text-black dark:text-white"
+      />
+    </div>
+  </div>
+</header>
 
-  <button onClick={toggleMenu}>{menuOpen ? <X /> : <Menu />}</button>
-</div>
 
-        </div>
-
-        {/* Mobile Search */}
-        <div className="sm:hidden px-4 pb-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-3" />
-            <input
-              type="text"
-              placeholder="Search books..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-              className={`w-full pl-10 pr-4 py-3 rounded-full border ${darkMode ? 'bg-gray-800 text-white' : 'bg-white text-black'}`}
-            />
-          </div>
-        </div>
-      </header>
-
-      {/* Sidebar */}
       {menuOpen && (
         <div className="fixed top-0 right-0 z-40 h-full bg-white dark:bg-gray-900 shadow-xl w-80">
           <DropdownSidebar
@@ -280,7 +280,6 @@ const Home = () => {
         </div>
       )}
 
-      {/* Main */}
       <main className="container mx-auto px-4 py-6">
         {connectionError && (
           <div className="bg-red-100 text-red-700 px-4 py-3 rounded mb-6">
@@ -290,20 +289,20 @@ const Home = () => {
         )}
 
         {loading ? (
-          <div className="text-center py-20">Loading...</div>
-        ) : (
-          <div className="grid gap-6 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4">
-            {books.length > 0 ? (
-              books.map(book => (
-                <BookCard key={book._id} book={book} currentPage={currentPage} />
-              ))
-            ) : (
-              <div className="col-span-full text-center py-20">No books found</div>
-            )}
-          </div>
-        )}
+  <div className="text-center py-20">Loading...</div>
+) : (
+  <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 p-2 sm:p-4">
+    {books.length > 0 ? (
+      books.map(book => (
+        <BookCard key={book._id} book={book} currentPage={currentPage} />
+      ))
+    ) : (
+      <div className="col-span-full text-center py-20">No books found</div>
+    )}
+  </div>
+)}
 
-        {/* Pagination */}
+
         {books.length > 0 && (
           <div className="flex justify-center items-center mt-12 gap-4">
             <button onClick={() => setPage(Math.max(currentPage - 1, 1))} disabled={currentPage === 1} className="bg-gray-200 dark:bg-gray-700 p-2 rounded">
@@ -319,7 +318,6 @@ const Home = () => {
         )}
       </main>
 
-      {/* Profile Panel Drawer */}
       {showProfile && (
         <div className="fixed inset-0 z-50 bg-black/50 flex justify-end">
           <div className="w-full max-w-md h-full bg-white dark:bg-gray-900 p-6 overflow-y-auto shadow-xl">
@@ -333,6 +331,8 @@ const Home = () => {
           </div>
         </div>
       )}
+      <Feedback />
+      <Footer />
     </div>
   );
 };
