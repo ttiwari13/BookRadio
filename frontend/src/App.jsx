@@ -1,18 +1,28 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
+// App.js - Fixed with Router wrapper and book detail route
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import './App.css'
-import Home from './components/Home'
-import BookDetail from './components/BookDetail';
+import { AuthProvider } from './context/AuthContext';
+import { ThemeProvider } from './context/ThemeContext';
+import Home from './components/Home';
+import Landing from './components/Landing';
+import BookDetail from './components/BookDetail'; // You'll need to create this component
+
 function App() {
   return (
-  <Routes>
-    <Route path="/" element={<Home />} />
-    <Route path="/books/:id" element={<BookDetail />} /> {/* ✅ */}
-  </Routes>
-
-  )
+    <ThemeProvider>
+      <AuthProvider>
+      
+          <Routes>
+            <Route path="/" element={<Landing />} />
+            <Route path="/home" element={<Home />} />
+            <Route path="/explore" element={<Home />} />
+            <Route path="/books/:id" element={<BookDetail />} />
+            {/* Add your other routes here */}
+            <Route path="*" element={<div>Page not found</div>} />
+          </Routes>
+       
+      </AuthProvider>
+    </ThemeProvider>
+  );
 }
 
 export default App;

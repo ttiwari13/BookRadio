@@ -4,11 +4,17 @@ const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
 const User = require('../models/User');
 
+// POST /api/feedback
 router.post('/', async (req, res) => {
   try {
     const { feedback, rating, feedbackType } = req.body;
 
-    // 🔐 Get user email from token
+    // ✅ Basic validation
+    if (!feedback || typeof rating !== 'number') {
+      return res.status(400).json({ error: 'Feedback and rating are required.' });
+    }
+
+    // 🔐 Extract token
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) return res.status(401).json({ error: 'No token provided' });
 
@@ -19,26 +25,27 @@ router.post('/', async (req, res) => {
       return res.status(401).json({ error: 'Invalid token' });
     }
 
+    // ✅ Find user
     const user = await User.findById(decoded.id);
     if (!user) return res.status(404).json({ error: 'User not found' });
 
     const senderEmail = user.email;
 
-    // 📧 Set up transporter with better error handling
-    const transporter = nodemailer.createTransporter({
+    // 📧 Email transport config
+    const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
-        user: process.env.FEEDBACK_SENDER_EMAIL,
-        pass: process.env.FEEDBACK_SENDER_PASSWORD, // Use App Password, not regular password
-      },
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      }
     });
 
-    // ✅ REPLACE WITH YOUR ACTUAL EMAIL
+    // ✅ Email options
     const RECEIVING_EMAIL = process.env.FEEDBACK_RECEIVING_EMAIL || 'your-actual-email@gmail.com';
 
     const mailOptions = {
-      from: `"BookRadio Feedback" <${process.env.FEEDBACK_SENDER_EMAIL}>`,
-      to: RECEIVING_EMAIL, // ✅ Fixed: Use actual email
+      from: `"BookRadio Feedback" <${process.env.FEEDBACK_SENDER_EMAIL || process.env.EMAIL_USER}>`,
+      to: RECEIVING_EMAIL,
       subject: `📢 New Feedback - ${feedbackType || 'General'}`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -59,27 +66,32 @@ router.post('/', async (req, res) => {
       `,
     };
 
-    // Test connection before sending
-    await transporter.verify();
+    // 🔄 Optional: verify transporter (skip in production for performance)
+    if (process.env.NODE_ENV !== 'production') {
+      await transporter.verify();
+    }
+
+    // 📤 Send email
     await transporter.sendMail(mailOptions);
-    
-    return res.status(200).json({ 
+
+    return res.status(200).json({
       message: 'Feedback sent successfully',
-      success: true 
+      success: true
     });
 
   } catch (error) {
     console.error('❌ Error sending feedback:', error);
+
     let errorMessage = 'Server error while sending feedback';
     if (error.code === 'EAUTH') {
-      errorMessage = 'Email authentication failed. Check your email credentials.';
+      errorMessage = 'Email authentication failed. Check your credentials.';
     } else if (error.code === 'ENOTFOUND') {
       errorMessage = 'Email service not found. Check your internet connection.';
     }
-    
-    return res.status(500).json({ 
+
+    return res.status(500).json({
       error: errorMessage,
-      success: false 
+      success: false
     });
   }
 });

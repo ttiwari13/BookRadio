@@ -1,23 +1,19 @@
+// Home.js - Updated Home Component using Layout
 import { useState, useEffect, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import {
-  Search, User, Sun, Moon, Menu, X, ChevronLeft, ChevronRight
-} from 'lucide-react';
-import DropdownSidebar from "../components/DropdownSidebar";
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useTheme } from "../context/ThemeContext";
 import LoginModal from "../components/LoginModal";
 import SignupModal from "../components/SignupModal";
 import BookCard from './BookCard';
+import Layout from "../components/Layout";
 import axios from "axios";
 import { useAuth } from "../context/useAuth";
-import Footer from './Footer';
-import Profile from './Profile';
-import Feedback from './FloatingFeedbackButton';
 
 const Home = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState(searchParams.get("q") || "");
-  const [darkMode, setDarkMode] = useState(() => localStorage.getItem('theme') === 'dark');
-  const [menuOpen, setMenuOpen] = useState(false);
+  const { darkMode } = useTheme();
   const { isLoggedIn, setIsLoggedIn } = useAuth();
   const [modalType, setModalType] = useState("login");
   const [connectionError, setConnectionError] = useState(null);
@@ -26,7 +22,6 @@ const Home = () => {
   const [initialLoad, setInitialLoad] = useState(true);
   const [authChecked, setAuthChecked] = useState(false);
   const authCheckRef = useRef(false);
-  const [showProfile, setShowProfile] = useState(false);
 
   const [filters, setFilters] = useState({
     language: '', genre: '', duration: '', author: ''
@@ -47,9 +42,6 @@ const Home = () => {
     setFilters(urlFilters);
     setSearchQuery(searchParams.get("q") || "");
   }, [searchParams]);
-
-  const toggleMenu = () => setMenuOpen(prev => !prev);
-  const toggleProfile = () => setShowProfile(prev => !prev);
 
   const setPage = (newPage) => {
     const params = new URLSearchParams(searchParams);
@@ -75,17 +67,6 @@ const Home = () => {
   const clearFilters = () => {
     updateFilters({ language: '', genre: '', duration: '', author: '' });
   };
-
-  useEffect(() => {
-    const root = document.documentElement;
-    if (darkMode) {
-      root.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      root.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-    }
-  }, [darkMode]);
 
   useEffect(() => {
     if (authCheckRef.current) return;
@@ -203,11 +184,15 @@ const Home = () => {
   const switchToLogin = () => setModalType("login");
 
   if (!authChecked) {
-    return <div className="flex justify-center items-center min-h-screen">Loading...</div>;
+    return (
+      <div className={`flex justify-center items-center min-h-screen ${darkMode ? 'bg-gray-950 text-white' : 'bg-gray-100 text-black'}`}>
+        Loading...
+      </div>
+    );
   }
 
   return (
-    <div className={`min-h-screen ${darkMode ? 'bg-gray-950 text-white' : 'bg-gray-100 text-black'}`}>
+    <>
       {!isLoggedIn && (
         <>
           <div className="fixed inset-0 bg-black/30 z-30" />
@@ -216,124 +201,61 @@ const Home = () => {
         </>
       )}
 
-      <header className="sticky top-0 z-20 bg-white dark:bg-gray-900 border-b shadow">
-  <div className="container mx-auto flex justify-between items-center px-4 py-3 gap-4">
-    {/* Logo */}
-    <Link to="/" className="shrink-0">
-      <img src="/logobr.png" alt="logo" className="h-10" />
-    </Link>
+      <Layout
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        handleSearch={handleSearch}
+        showSearch={true}
+        filters={filters}
+        filterOptions={filterOptions}
+        onFiltersChange={updateFilters}
+        onClearFilters={clearFilters}
+      >
+        <main className="container mx-auto px-4 py-6">
+          {connectionError && (
+            <div className="bg-red-100 text-red-700 px-4 py-3 rounded mb-6">
+              <strong>Connection Error:</strong> {connectionError}
+              <button onClick={() => window.location.reload()} className="ml-2 underline">Retry</button>
+            </div>
+          )}
 
-    {/* Search Bar - Desktop */}
-    <div className={`hidden sm:flex flex-grow max-w-md items-center bg-gray-100 dark:bg-gray-800 px-4 py-2 rounded-full`}>
-      <Search className="mr-2 text-gray-500 dark:text-gray-300" />
-      <input
-        type="text"
-        value={searchQuery}
-        placeholder="Search books..."
-        onChange={(e) => setSearchQuery(e.target.value)}
-        onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-        className="bg-transparent outline-none w-full text-sm dark:text-white text-black"
-      />
-    </div>
+          {loading ? (
+            <div className="text-center py-20">Loading...</div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 p-2 sm:p-4">
+              {books.length > 0 ? (
+                books.map(book => (
+                  <BookCard key={book._id} book={book} currentPage={currentPage} />
+                ))
+              ) : (
+                <div className="col-span-full text-center py-20">No books found</div>
+              )}
+            </div>
+          )}
 
-    {/* Action Buttons */}
-    <div className="flex items-center gap-3 shrink-0">
-      <button onClick={toggleProfile} className="p-2 hover:bg-gray-200 dark:hover:bg-gray-800 rounded-full">
-        <User className="w-5 h-5" />
-      </button>
-      <button onClick={() => setDarkMode(!darkMode)} className="hidden sm:inline p-2 hover:bg-gray-200 dark:hover:bg-gray-800 rounded-full">
-        {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-      </button>
-      <button onClick={toggleMenu} className="p-2 hover:bg-gray-200 dark:hover:bg-gray-800 rounded-full">
-        {menuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-      </button>
-    </div>
-  </div>
-
-  {/* Search Bar - Mobile */}
-  <div className="sm:hidden px-4 pb-3">
-    <div className="relative">
-      <Search className="absolute left-3 top-3 text-gray-500" />
-      <input
-        type="text"
-        placeholder="Search books..."
-        value={searchQuery}
-        onChange={(e) => setSearchQuery(e.target.value)}
-        onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-        className="w-full pl-10 pr-4 py-3 rounded-full border dark:border-gray-700 bg-white dark:bg-gray-800 text-black dark:text-white"
-      />
-    </div>
-  </div>
-</header>
-
-
-      {menuOpen && (
-        <div className="fixed top-0 right-0 z-40 h-full bg-white dark:bg-gray-900 shadow-xl w-80">
-          <DropdownSidebar
-            darkMode={darkMode}
-            filters={filters}
-            filterOptions={filterOptions}
-            onFiltersChange={updateFilters}
-            onClearFilters={clearFilters}
-            onClose={() => setMenuOpen(false)}
-          />
-        </div>
-      )}
-
-      <main className="container mx-auto px-4 py-6">
-        {connectionError && (
-          <div className="bg-red-100 text-red-700 px-4 py-3 rounded mb-6">
-            <strong>Connection Error:</strong> {connectionError}
-            <button onClick={() => window.location.reload()} className="ml-2 underline">Retry</button>
-          </div>
-        )}
-
-        {loading ? (
-  <div className="text-center py-20">Loading...</div>
-) : (
-  <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 p-2 sm:p-4">
-    {books.length > 0 ? (
-      books.map(book => (
-        <BookCard key={book._id} book={book} currentPage={currentPage} />
-      ))
-    ) : (
-      <div className="col-span-full text-center py-20">No books found</div>
-    )}
-  </div>
-)}
-
-
-        {books.length > 0 && (
-          <div className="flex justify-center items-center mt-12 gap-4">
-            <button onClick={() => setPage(Math.max(currentPage - 1, 1))} disabled={currentPage === 1} className="bg-gray-200 dark:bg-gray-700 p-2 rounded">
-              <ChevronLeft />
-            </button>
-            <span className="px-4 py-2 bg-green-200 dark:bg-green-700 text-black dark:text-white rounded">
-              {currentPage}
-            </span>
-            <button onClick={() => setPage(currentPage + 1)} className="bg-gray-200 dark:bg-gray-700 p-2 rounded">
-              <ChevronRight />
-            </button>
-          </div>
-        )}
-      </main>
-
-      {showProfile && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex justify-end">
-          <div className="w-full max-w-md h-full bg-white dark:bg-gray-900 p-6 overflow-y-auto shadow-xl">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold">Profile</h2>
-              <button onClick={toggleProfile} className="text-xl text-black dark:text-white">
-                <X />
+          {books.length > 0 && (
+            <div className="flex justify-center items-center mt-12 gap-4">
+              <button 
+                onClick={() => setPage(Math.max(currentPage - 1, 1))} 
+                disabled={currentPage === 1} 
+                className="bg-gray-200 dark:bg-gray-700 p-2 rounded disabled:opacity-50"
+              >
+                <ChevronLeft />
+              </button>
+              <span className="px-4 py-2 bg-green-200 dark:bg-green-700 text-black dark:text-white rounded">
+                {currentPage}
+              </span>
+              <button 
+                onClick={() => setPage(currentPage + 1)} 
+                className="bg-gray-200 dark:bg-gray-700 p-2 rounded"
+              >
+                <ChevronRight />
               </button>
             </div>
-            <Profile />
-          </div>
-        </div>
-      )}
-      <Feedback />
-      <Footer />
-    </div>
+          )}
+        </main>
+      </Layout>
+    </>
   );
 };
 

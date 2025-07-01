@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Book = require('../models/Book');
 const { searchBooks } = require('../controllers/bookController');
+
 // 🟢 GET /api/books/filters - Get all filter options
 router.get('/filters', async (req, res) => {
   try {
@@ -24,6 +25,7 @@ router.get('/search/:query', async (req, res) => {
 });
 
 router.get('/search', searchBooks); // GET /api/books/search?q=your_query
+
 // 🟢 GET /api/books/tag/:tag
 router.get('/tag/:tag', async (req, res) => {
   try {
@@ -90,14 +92,100 @@ router.get('/', async (req, res) => {
   }
 });
 
+// 🚨 IMPORTANT: Move this BEFORE the /:id route!
+// 🆕 GET /api/books/:id/episodes - Get episodes for a specific book
+router.get('/:id/episodes', async (req, res) => {
+  try {
+    console.log('📚 Fetching episodes for book ID:', req.params.id);
+    
+    // Validate MongoDB ObjectId format
+    if (!req.params.id.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ message: "Invalid book ID format" });
+    }
+    
+    const book = await Book.findById(req.params.id);
+    if (!book) {
+      console.log('❌ Book not found for ID:', req.params.id);
+      return res.status(404).json({ message: "Book not found" });
+    }
+    
+    console.log('✅ Book found:', book.title);
+    
+    // Check different possible field names for episodes
+    const episodes = book.episodes || book.parts || book.chapters || [];
+    
+    console.log('📖 Raw episodes data:', episodes);
+    console.log('📊 Episodes count:', episodes.length);
+    
+    // If no episodes found, return empty array
+    if (!episodes || episodes.length === 0) {
+      console.log('⚠️ No episodes found for this book');
+      return res.json([]);
+    }
+    
+    // Format episodes to ensure consistent structure
+    const formattedEpisodes = episodes.map((episode, index) => {
+      if (typeof episode === 'object' && episode !== null) {
+        // Episode is already an object
+        return {
+          _id: episode._id || episode.id || `ep_${book._id}_${index}`,
+          title: episode.title || episode.name || `Episode ${index + 1}`,
+          episodeNumber: episode.episodeNumber || episode.number || index + 1,
+          duration: episode.duration || episode.length || 0,
+          description: episode.description || episode.summary || '',
+          audioUrl: episode.audioUrl || episode.url || episode.link || '',
+          isCompleted: episode.isCompleted || false,
+          bookId: book._id,
+          ...episode
+        };
+      } else {
+        // Episode is a primitive value (string, number)
+        return {
+          _id: `ep_${book._id}_${index}`,
+          title: `Episode ${index + 1}`,
+          episodeNumber: index + 1,
+          duration: 0,
+          description: episode ? episode.toString() : '',
+          audioUrl: '',
+          isCompleted: false,
+          bookId: book._id
+        };
+      }
+    });
+    
+    console.log('✨ Formatted episodes:', formattedEpisodes.length);
+    res.json(formattedEpisodes);
+    
+  } catch (err) {
+    console.error('💥 Error fetching episodes:', err);
+    res.status(500).json({ 
+      message: "Failed to fetch episodes", 
+      error: err.message,
+      bookId: req.params.id 
+    });
+  }
+});
 
-// 🟢 GET /api/books/:id
+// 🟢 GET /api/books/:id - This should come AFTER the episodes route
 router.get('/:id', async (req, res) => {
   try {
+    console.log('📖 Fetching book details for ID:', req.params.id);
+    
+    // Validate MongoDB ObjectId format
+    if (!req.params.id.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ message: "Invalid book ID format" });
+    }
+    
     const book = await Book.findById(req.params.id);
-    if (!book) return res.status(404).json({ message: "Book not found" });
+    if (!book) {
+      console.log('❌ Book not found for ID:', req.params.id);
+      return res.status(404).json({ message: "Book not found" });
+    }
+    
+    console.log('✅ Book found:', book.title);
     res.json(book);
   } catch (err) {
+    console.error('💥 Error fetching book:', err);
     res.status(500).json({ message: "Server Error", error: err.message });
   }
 });
