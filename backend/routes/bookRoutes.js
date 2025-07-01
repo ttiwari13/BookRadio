@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const Book = require('../models/Book');
-const { searchBooks } = require('../controllers/bookController');
+const { protect } = require('../middleware/authMiddleware');
+const { searchBooks } = require('../controllers/bookController.js');
 
 // 🟢 GET /api/books/filters - Get all filter options
 router.get('/filters', async (req, res) => {
@@ -13,18 +14,8 @@ router.get('/filters', async (req, res) => {
   }
 });
 
-// 🟢 GET /api/books/search/:query
-router.get('/search/:query', async (req, res) => {
-  try {
-    const regex = new RegExp(req.params.query, 'i');
-    const books = await Book.find({ title: regex }).limit(20);
-    res.json(books);
-  } catch (err) {
-    res.status(500).json({ message: "Search failed", error: err.message });
-  }
-});
-
-router.get('/search', searchBooks); // GET /api/books/search?q=your_query
+// 🟢 GET /api/books/search?q=query (controller-based)
+router.get('/search', searchBooks);
 
 // 🟢 GET /api/books/tag/:tag
 router.get('/tag/:tag', async (req, res) => {
@@ -60,7 +51,6 @@ router.get('/', async (req, res) => {
     if (req.query.duration) filters.durationCategory = req.query.duration;
     if (req.query.author) filters.author = req.query.author;
 
-    // 👇 Search logic
     const q = req.query.q;
     if (q) {
       const regex = new RegExp(q, 'i');
@@ -70,7 +60,6 @@ router.get('/', async (req, res) => {
       ];
     }
 
-    // ✅ filters now includes both filters and search
     const totalBooks = await Book.countDocuments(filters);
     const books = await Book.find(filters)
       .skip(skip)
@@ -92,54 +81,34 @@ router.get('/', async (req, res) => {
   }
 });
 
-// 🚨 IMPORTANT: Move this BEFORE the /:id route!
-// 🆕 GET /api/books/:id/episodes - Get episodes for a specific book
-router.get('/:id/episodes', async (req, res) => {
+// 🔒 GET /api/books/:id/episodes
+router.get('/:id/episodes', protect, async (req, res) => {
   try {
-    console.log('📚 Fetching episodes for book ID:', req.params.id);
-    
-    // Validate MongoDB ObjectId format
     if (!req.params.id.match(/^[0-9a-fA-F]{24}$/)) {
       return res.status(400).json({ message: "Invalid book ID format" });
     }
-    
+
     const book = await Book.findById(req.params.id);
     if (!book) {
-      console.log('❌ Book not found for ID:', req.params.id);
       return res.status(404).json({ message: "Book not found" });
     }
-    
-    console.log('✅ Book found:', book.title);
-    
-    // Check different possible field names for episodes
+
     const episodes = book.episodes || book.parts || book.chapters || [];
-    
-    console.log('📖 Raw episodes data:', episodes);
-    console.log('📊 Episodes count:', episodes.length);
-    
-    // If no episodes found, return empty array
-    if (!episodes || episodes.length === 0) {
-      console.log('⚠️ No episodes found for this book');
-      return res.json([]);
-    }
-    
-    // Format episodes to ensure consistent structure
+
     const formattedEpisodes = episodes.map((episode, index) => {
       if (typeof episode === 'object' && episode !== null) {
-        // Episode is already an object
         return {
           _id: episode._id || episode.id || `ep_${book._id}_${index}`,
           title: episode.title || episode.name || `Episode ${index + 1}`,
-          episodeNumber: episode.episodeNumber || episode.number || index + 1,
-          duration: episode.duration || episode.length || 0,
-          description: episode.description || episode.summary || '',
-          audioUrl: episode.audioUrl || episode.url || episode.link || '',
+          episodeNumber: episode.episodeNumber || index + 1,
+          duration: episode.duration || 0,
+          description: episode.description || '',
+          audioUrl: episode.audioUrl || '',
           isCompleted: episode.isCompleted || false,
           bookId: book._id,
           ...episode
         };
       } else {
-        // Episode is a primitive value (string, number)
         return {
           _id: `ep_${book._id}_${index}`,
           title: `Episode ${index + 1}`,
@@ -152,10 +121,8 @@ router.get('/:id/episodes', async (req, res) => {
         };
       }
     });
-    
-    console.log('✨ Formatted episodes:', formattedEpisodes.length);
+
     res.json(formattedEpisodes);
-    
   } catch (err) {
     console.error('💥 Error fetching episodes:', err);
     res.status(500).json({ 
@@ -166,26 +133,20 @@ router.get('/:id/episodes', async (req, res) => {
   }
 });
 
-// 🟢 GET /api/books/:id - This should come AFTER the episodes route
+// 🟢 GET /api/books/:id
 router.get('/:id', async (req, res) => {
   try {
-    console.log('📖 Fetching book details for ID:', req.params.id);
-    
-    // Validate MongoDB ObjectId format
     if (!req.params.id.match(/^[0-9a-fA-F]{24}$/)) {
       return res.status(400).json({ message: "Invalid book ID format" });
     }
-    
+
     const book = await Book.findById(req.params.id);
     if (!book) {
-      console.log('❌ Book not found for ID:', req.params.id);
       return res.status(404).json({ message: "Book not found" });
     }
-    
-    console.log('✅ Book found:', book.title);
+
     res.json(book);
   } catch (err) {
-    console.error('💥 Error fetching book:', err);
     res.status(500).json({ message: "Server Error", error: err.message });
   }
 });

@@ -3,6 +3,7 @@ import axios from 'axios';
 import { LogOut, ChevronDown, ChevronUp, Pencil, Sun, Moon, X } from 'lucide-react';
 import { useAuth } from '../context/useAuth';
 
+
 const getAvatarUrl = (avatar) => {
   if (!avatar) return '/default-avatar.png';
   return `http://localhost:5000/uploads/${avatar}?t=${Date.now()}`;
@@ -286,7 +287,7 @@ const Profile = () => {
             <button 
               type="button" 
               onClick={() => setEditAvatarMode(true)} 
-              className="text-sm text-green-400 hover:underline flex items-center"
+              className="text-sm text-teal-400 hover:underline flex items-center"
             >
               <Pencil className="mr-1" size={16} /> Edit Avatar
             </button>
@@ -331,7 +332,7 @@ const Profile = () => {
         <button
           type="button"
           onClick={() => setShowPasswordFields(prev => !prev)}
-          className="flex items-center gap-2 text-sm text-green-400 hover:underline"
+          className="flex items-center gap-2 text-sm text-teal-400 hover:underline"
         >
           {showPasswordFields ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
           {showPasswordFields ? 'Hide Password Fields' : 'Change Password'}
@@ -362,12 +363,13 @@ const Profile = () => {
           type="submit"
           disabled={isLoading}
           className={`px-6 py-2 rounded w-full sm:w-auto text-white ${
-            isLoading ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'
+            isLoading ? 'bg-gray-400 cursor-not-allowed' : 'bg-teal-400 hover:bg-teal-500'
           }`}
         >
           {isLoading ? 'Saving...' : 'Save Changes'}
         </button>
       </form>
+  
     </div>
   );
 };

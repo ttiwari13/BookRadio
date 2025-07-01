@@ -8,7 +8,7 @@ const connectDB = require("./config/db");
 const cors = require('cors');
 const bookRoutes = require('./routes/bookRoutes');
 const feedbackRoutes = require('./routes/feedback');
-// Connect to MongoDB
+
 connectDB();
 
 const app = express();

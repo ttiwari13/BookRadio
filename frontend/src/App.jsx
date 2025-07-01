@@ -1,4 +1,3 @@
-// App.js - Fixed with Router wrapper and book detail route
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
