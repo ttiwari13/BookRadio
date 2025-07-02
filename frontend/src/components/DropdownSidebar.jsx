@@ -1,14 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { X } from 'lucide-react';
-import axios from "axios";
+import API from "../api/axios"; // ✅ Use your custom Axios instance
 
-const DropdownSidebar = ({ 
-  darkMode, 
-  filters, 
-  filterOptions: initialOptions, 
-  onFiltersChange, 
+const DropdownSidebar = ({
+  darkMode,
+  filters,
+  filterOptions: initialOptions,
+  onFiltersChange,
   onClearFilters,
-  onClose 
+  onClose
 }) => {
   const [filterOptions, setFilterOptions] = useState(initialOptions || {
     languages: [],
@@ -19,7 +19,7 @@ const DropdownSidebar = ({
 
   useEffect(() => {
     if (!initialOptions) {
-      axios.get('/api/books/filters')
+      API.get('/api/books/filters')
         .then(res => setFilterOptions(res.data))
         .catch(err => console.error("Error fetching filter options:", err));
     }
@@ -100,7 +100,7 @@ const DropdownSidebar = ({
               if (!value) return null;
               const filterLabel = {
                 language: '📚',
-                genre: '🎭', 
+                genre: '🎭',
                 author: '✍️',
                 duration: '⏱️'
               }[key] || '';

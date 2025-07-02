@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import API from '../api/axios';
 import { useAuth } from "../context/useAuth";
-import { AlertCircle, CheckCircle, Loader2, LogIn, Sparkles, Heart, X, Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import {
+  AlertCircle, CheckCircle, Loader2, LogIn, Sparkles, Heart, X,
+  Mail, Lock, Eye, EyeOff
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const LoginModal = ({ onClose, onSwitchToSignup }) => {
@@ -19,7 +22,6 @@ const LoginModal = ({ onClose, onSwitchToSignup }) => {
     setSuccess('');
     setLoading(true);
 
-    // Basic validation
     if (!email || !password) {
       setError('Please fill in all fields');
       setLoading(false);
@@ -32,80 +34,59 @@ const LoginModal = ({ onClose, onSwitchToSignup }) => {
       return;
     }
 
-    console.log('🔍 Attempting login with:', { email, password: '***' });
-
     try {
-      const response = await axios({
-        method: 'POST',
-        url: 'http://localhost:5000/api/auth/login',
-        data: {
+      const response = await API.post(
+        '/api/auth/login',
+        {
           email: email.trim().toLowerCase(),
-          password: password
+          password
         },
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        timeout: 10000,
-        withCredentials: true
-      });
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          timeout: 10000,
+          withCredentials: true
+        }
+      );
 
-      console.log('✅ Login successful:', response.data);
-
-      if (response.data && response.data.token) {
+      if (response.data?.token) {
         setSuccess('Login successful! Welcome back!');
-        
-        // Use the context login method
         login(response.data.token, response.data.user);
-        
-        // Close modal after showing success
-        setTimeout(() => {
-          onClose();
-        }, 1500);
-        
-        console.log('🎉 Login process completed successfully');
-        
+        setTimeout(() => onClose(), 1500);
       } else {
         setError('Login successful but no token received');
-        console.error('❌ No token in response:', response.data);
       }
 
     } catch (err) {
-      console.error('❌ Login error:', err);
-      
       let errorMessage = 'An unexpected error occurred';
-      
+
       if (err.code === 'ECONNABORTED') {
         errorMessage = 'Request timed out. Please check if the server is running.';
       } else if (err.response) {
-        const status = err.response.status;
-        const data = err.response.data;
-        
-        console.error('❌ Server error response:', { status, data });
-        
+        const { status, data } = err.response;
         switch (status) {
           case 400:
-            errorMessage = data?.message || 'Invalid request. Please check your input.';
+            errorMessage = data?.message || 'Invalid request.';
             break;
           case 401:
             errorMessage = data?.message || 'Invalid email or password.';
             break;
           case 404:
-            errorMessage = 'Login service not found. Please check if the server is running.';
+            errorMessage = 'Login service not found.';
             break;
           case 500:
-            errorMessage = data?.message || 'Server error. Please try again later.';
+            errorMessage = data?.message || 'Server error. Please try again.';
             break;
           default:
-            errorMessage = data?.message || `Server error (${status}). Please try again.`;
+            errorMessage = data?.message || `Error (${status}). Try again.`;
         }
       } else if (err.request) {
-        console.error('❌ No response received:', err.request);
-        errorMessage = 'Cannot connect to server. Please check if the server is running on http://localhost:5000';
+        errorMessage = 'Cannot connect to server.';
       } else {
-        console.error('❌ Request setup error:', err.message);
         errorMessage = `Request failed: ${err.message}`;
       }
-      
+
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -174,27 +155,27 @@ const LoginModal = ({ onClose, onSwitchToSignup }) => {
               <div className="space-y-3">
                 <div className="relative">
                   <Mail size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-400" />
-                  <input 
-                    type="email" 
-                    placeholder="Email Address" 
-                    className="w-full pl-12 pr-4 py-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 border border-gray-300 dark:border-zinc-600 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-teal-500 outline-none transition-all" 
-                    value={email} 
-                    onChange={e => setEmail(e.target.value)} 
-                    disabled={loading} 
-                    required 
+                  <input
+                    type="email"
+                    placeholder="Email Address"
+                    className="w-full pl-12 pr-4 py-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 border border-gray-300 dark:border-zinc-600 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-teal-500 outline-none transition-all"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    disabled={loading}
+                    required
                   />
                 </div>
-                
+
                 <div className="relative">
                   <Lock size={20} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-400" />
-                  <input 
-                    type={showPassword ? "text" : "password"} 
-                    placeholder="Password" 
-                    className="w-full pl-12 pr-12 py-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 border border-gray-300 dark:border-zinc-600 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-teal-500 outline-none transition-all" 
-                    value={password} 
-                    onChange={e => setPassword(e.target.value)} 
-                    disabled={loading} 
-                    required 
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Password"
+                    className="w-full pl-12 pr-12 py-4 rounded-xl bg-zinc-100 dark:bg-zinc-800 border border-gray-300 dark:border-zinc-600 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-teal-500 outline-none transition-all"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    disabled={loading}
+                    required
                   />
                   <motion.button
                     whileHover={{ scale: 1.1 }}
@@ -210,22 +191,22 @@ const LoginModal = ({ onClose, onSwitchToSignup }) => {
               </div>
 
               {error && (
-                <motion.div 
-                  initial={{ opacity: 0, y: -10 }} 
-                  animate={{ opacity: 1, y: 0 }} 
-                  exit={{ opacity: 0 }} 
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
                   className="flex items-center gap-2 p-4 bg-red-100 dark:bg-red-900/20 border border-red-300 dark:border-red-800 text-red-700 dark:text-red-400 rounded-xl"
                 >
                   <AlertCircle size={20} />
                   <span>{error}</span>
                 </motion.div>
               )}
-              
+
               {success && (
-                <motion.div 
-                  initial={{ opacity: 0, y: -10 }} 
-                  animate={{ opacity: 1, y: 0 }} 
-                  exit={{ opacity: 0 }} 
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
                   className="flex items-center gap-2 p-4 bg-green-100 dark:bg-green-900/20 border border-green-300 dark:border-green-800 text-green-700 dark:text-green-400 rounded-xl"
                 >
                   <CheckCircle size={20} />
@@ -233,16 +214,16 @@ const LoginModal = ({ onClose, onSwitchToSignup }) => {
                 </motion.div>
               )}
 
-              <motion.button 
-                whileHover={{ scale: 1.02 }} 
-                whileTap={{ scale: 0.98 }} 
-                type="submit" 
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                type="submit"
                 className="w-full bg-gradient-to-r from-teal-500 via-cyan-500 to-blue-500 hover:from-teal-600 hover:via-cyan-600 hover:to-blue-600 text-white py-4 rounded-xl font-semibold transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed"
                 disabled={loading}
               >
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">
-                    <Loader2 className="w-5 h-5 animate-spin" /> 
+                    <Loader2 className="w-5 h-5 animate-spin" />
                     Signing In...
                   </span>
                 ) : (
@@ -253,8 +234,8 @@ const LoginModal = ({ onClose, onSwitchToSignup }) => {
 
             <div className="text-center mt-6 text-sm text-zinc-500 dark:text-zinc-400">
               Don't have an account?{' '}
-              <button 
-                onClick={onSwitchToSignup} 
+              <button
+                onClick={onSwitchToSignup}
                 className="text-transparent bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text font-bold hover:from-teal-700 hover:to-cyan-700 transition-all duration-300"
                 disabled={loading}
               >
@@ -263,8 +244,8 @@ const LoginModal = ({ onClose, onSwitchToSignup }) => {
             </div>
 
             <div className="text-center mt-2">
-              <button 
-                onClick={onClose} 
+              <button
+                onClick={onClose}
                 className="text-sm text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors"
                 disabled={loading}
               >
@@ -272,22 +253,22 @@ const LoginModal = ({ onClose, onSwitchToSignup }) => {
               </button>
             </div>
 
-            {/* Animated Background Elements */}
-            <motion.div 
-              animate={{ rotate: 360, scale: [1, 1.2, 1] }} 
-              transition={{ 
-                rotate: { duration: 15, repeat: Infinity, ease: 'linear' }, 
-                scale: { duration: 3, repeat: Infinity, ease: 'easeInOut' } 
-              }} 
-              className="absolute -top-4 -right-4 w-8 h-8 bg-gradient-to-r from-teal-400 to-cyan-400 rounded-full opacity-20 blur-sm" 
+            {/* Decorative animations */}
+            <motion.div
+              animate={{ rotate: 360, scale: [1, 1.2, 1] }}
+              transition={{
+                rotate: { duration: 15, repeat: Infinity, ease: 'linear' },
+                scale: { duration: 3, repeat: Infinity, ease: 'easeInOut' }
+              }}
+              className="absolute -top-4 -right-4 w-8 h-8 bg-gradient-to-r from-teal-400 to-cyan-400 rounded-full opacity-20 blur-sm"
             />
-            <motion.div 
-              animate={{ rotate: -360, scale: [1.2, 1, 1.2] }} 
-              transition={{ 
-                rotate: { duration: 20, repeat: Infinity, ease: 'linear' }, 
-                scale: { duration: 4, repeat: Infinity, ease: 'easeInOut' } 
-              }} 
-              className="absolute -bottom-3 -left-3 w-6 h-6 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full opacity-20 blur-sm" 
+            <motion.div
+              animate={{ rotate: -360, scale: [1.2, 1, 1.2] }}
+              transition={{
+                rotate: { duration: 20, repeat: Infinity, ease: 'linear' },
+                scale: { duration: 4, repeat: Infinity, ease: 'easeInOut' }
+              }}
+              className="absolute -bottom-3 -left-3 w-6 h-6 bg-gradient-to-r from-purple-400 to-pink-400 rounded-full opacity-20 blur-sm"
             />
           </div>
         </motion.div>

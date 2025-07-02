@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+
 import { AlertCircle, CheckCircle, Loader2, User, Sparkles, Heart, X, Mail, Lock } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-
+import API from "../api/axios"; 
 const SignupModal = ({ onClose, onSwitchToLogin }) => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -24,7 +24,7 @@ const SignupModal = ({ onClose, onSwitchToLogin }) => {
     }
 
     try {
-      const res = await axios.post('http://localhost:5000/api/auth/register', {
+     const res = await API.post('/auth/register', {
         username: name,
         email,
         password

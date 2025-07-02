@@ -16,7 +16,7 @@ app.use(express.json());
 
 app.use(cors({
   origin: [
-    
+    'https://bookfrontend-mauve.vercel.app',
     'http://localhost:4000',  // ✅ Added this line
    
     'http://127.0.0.1:4000'   // ✅ Added this line too

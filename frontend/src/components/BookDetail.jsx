@@ -4,7 +4,7 @@ import {
   ArrowLeft, Clock, Globe, Tag, Play, BookOpen,
   Star, SkipForward, SkipBack, Pause, Heart, Share2, Download, Volume2
 } from 'lucide-react';
-import axios from 'axios';
+import API from '../api/axios'; 
 import { useTheme } from '../context/ThemeContext';
 import Layout from './Layout';
 
@@ -35,7 +35,7 @@ const BookDetail = () => {
     const fetchBook = async () => {
       try {
         setLoading(true);
-        const res = await axios.get(`http://localhost:5000/api/books/${id}`);
+        const res = await API.get(`/api/books/${id}`);
         setBook(res.data);
       } finally {
         setLoading(false);
@@ -45,17 +45,26 @@ const BookDetail = () => {
   }, [id]);
 
   useEffect(() => {
-    const fetchEpisodes = async () => {
-      try {
-        const res = await axios.get(`http://localhost:5000/api/books/${id}/episodes`);
-        setEpisodes(res.data || []);
-      } catch (err) {
-        console.error('Error loading episodes', err);
-        setEpisodes([]);
-      }
-    };
-    if (id) fetchEpisodes();
-  }, [id]);
+  const fetchEpisodes = async () => {
+    try {
+      const token = localStorage.getItem('token'); // 👈 get token
+
+      const res = await API.get(`/api/books/${id}/episodes`, {
+        headers: {
+          Authorization: `Bearer ${token}`, // 👈 add token in header
+        },
+      });
+
+      setEpisodes(res.data || []);
+    } catch (err) {
+      console.error('Error loading episodes', err);
+      setEpisodes([]);
+    }
+  };
+
+  if (id) fetchEpisodes();
+}, [id]);
+
 
   const formatDuration = (duration) => {
     if (!duration) return "Unknown";
@@ -217,7 +226,7 @@ const BookDetail = () => {
               {/* Action Buttons */}
               <div className="flex gap-4 animate-fade-in" style={{animationDelay: '0.6s'}}>
                 <button 
-                  onClick={() => handlePlayEpisode(episodes[0])} 
+                   onClick={() => episodes[0] && handlePlayEpisode(episodes[0])} 
                   className="group flex-1 px-8 py-4 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white rounded-xl flex items-center justify-center gap-3 transition-all duration-500 transform hover:scale-105 hover:shadow-2xl font-semibold text-lg"
                 >
                   <Play size={24} className="transition-transform duration-300 group-hover:scale-110" /> 

@@ -1,4 +1,4 @@
-// Home.js - Updated Home Component using Layout
+// Home.js - Updated with API instance
 import { useState, useEffect, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
@@ -7,7 +7,7 @@ import LoginModal from "../components/LoginModal";
 import SignupModal from "../components/SignupModal";
 import BookCard from './BookCard';
 import Layout from "../components/Layout";
-import axios from "axios";
+import API from "../api/axios"; // ✅ Use your custom instance named API
 import { useAuth } from "../context/useAuth";
 
 const Home = () => {
@@ -83,15 +83,16 @@ const Home = () => {
         setIsLoggedIn(true);
         setAuthChecked(true);
         try {
-          const res = await axios.get("http://localhost:5000/api/auth/me", {
-            headers: { Authorization: `Bearer ${token}` }, timeout: 8000
+          const res = await API.get("/api/auth/me", {
+            headers: { Authorization: `Bearer ${token}` },
+            timeout: 8000
           });
           if (!res.data) {
             localStorage.removeItem("token");
             setIsLoggedIn(false);
           }
         } catch (error) {
-          if (error.response && (error.response.status === 401 || 403)) {
+          if (error.response && (error.response.status === 401 || error.response.status === 403)) {
             localStorage.removeItem("token");
             setIsLoggedIn(false);
           }
@@ -106,6 +107,7 @@ const Home = () => {
 
     checkLogin();
   }, [setIsLoggedIn]);
+console.log("👉 Base URL:", API.defaults.baseURL);
 
   useEffect(() => {
     const fetchBooks = async () => {
@@ -118,9 +120,10 @@ const Home = () => {
         });
         queryParams.set('page', currentPage.toString());
         queryParams.set('limit', '12');
-        const res = await axios.get(`http://localhost:5000/api/books?${queryParams.toString()}`, { timeout: 10000 });
+        const res = await API.get(`/api/books?${queryParams.toString()}`, { timeout: 10000 });
         const data = res.data;
-        setBooks(Array.isArray(data) ? data : data.books || data.data || []);
+        setBooks(Array.isArray(data.books) ? data.books : []);
+
       } catch (error) {
         console.error("Fetch error:", error.message);
         setBooks([]);
@@ -137,7 +140,7 @@ const Home = () => {
 
     const fetchFilterOptions = async () => {
       try {
-        const res = await axios.get('http://localhost:5000/api/books/filters', { timeout: 5000 });
+        const res = await API.get('/api/books/filters', { timeout: 5000 });
         if (res.data) {
           setFilterOptions(prev => ({
             ...prev,

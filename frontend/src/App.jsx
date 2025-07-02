@@ -15,7 +15,7 @@ function App() {
             <Route path="/home" element={<Home />} />
             <Route path="/explore" element={<Home />} />
             <Route path="/books/:id" element={<BookDetail />} />
-            {/* Add your other routes here */}
+         
             <Route path="*" element={<div>Page not found</div>} />
           </Routes>
        
