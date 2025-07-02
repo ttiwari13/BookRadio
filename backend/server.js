@@ -1,7 +1,8 @@
 // server.js - FIXED FOR EXPRESS v5
 const express = require("express");
 const dotenv = require("dotenv");
-const path = require("path"); // Add this import
+const path = require("path");
+
 dotenv.config();
 
 const connectDB = require("./config/db");
@@ -18,7 +19,6 @@ app.use(cors({
   origin: [
     'https://bookfrontend-mauve.vercel.app',
     'http://localhost:4000',  // ✅ Added this line
-   
     'http://127.0.0.1:4000'   // ✅ Added this line too
   ],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -35,29 +35,32 @@ app.use('/uploads', express.static('uploads', {
     res.setHeader('Cache-Control', 'no-cache');
   }
 }));
+
 // Import routes
 const authRoutes = require('./routes/authRoutes');
 const profileRoutes = require('./routes/profile');
+
 // Home route for testing
 app.get("/", (req, res) => {
   res.send("Book Radio is running...");
 });
 
 // Auth routes
-app.use('/api/auth', authRoutes);
+app.use('/auth', authRoutes);
 
 // Profile routes
 app.use('/api/profile', profileRoutes);
-// BookRoutes
+
+// Book routes
 app.use('/api/books', bookRoutes);
 app.use('/api/feedback', feedbackRoutes);
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ message: "Server error" });
 });
 
-// Start the server
 // Start the server - RENDER COMPATIBLE
 const PORT = process.env.PORT || 10000;
 
