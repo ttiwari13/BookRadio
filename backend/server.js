@@ -58,7 +58,16 @@ app.use((err, req, res, next) => {
 });
 
 // Start the server
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () =>
-  console.log(`✅ Server started on http://localhost:${PORT}`)
-);
+// Start the server - RENDER COMPATIBLE
+const PORT = process.env.PORT || 10000;
+
+app.listen(PORT, '0.0.0.0', (err) => {
+  if (err) {
+    console.error('❌ Server failed to start:', err);
+    process.exit(1);
+  }
+  
+  console.log(`✅ Server running on port ${PORT}`);
+  console.log(`🌐 URL: https://bookradio-1.onrender.com`);
+  console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
+});
