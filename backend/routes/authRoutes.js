@@ -2,10 +2,13 @@ const express = require('express');
 const router = express.Router();
 const { register, login } = require('../controllers/authController');
 const { protect } = require('../middleware/authMiddleware');
-
+console.log("🔍 Auth routes file loaded"); 
 const User = require('../models/User');
 
-router.post('/register', register);
+router.post('/register', (req, res, next) => {
+  console.log("🔍 Register route hit"); // Add this line
+  register(req, res, next);
+});
 router.post('/login', login);
 
 // ✅ Enable /me route to return current logged-in user
