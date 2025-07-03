@@ -16,4 +16,4 @@ const protect = (req, res, next) => {
   }
 };
 
-module.exports = { protect }; // ✅ named export
+module.exports = { protect }; //  named export
