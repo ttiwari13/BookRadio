@@ -31,14 +31,14 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// 🔒 Auto-hash password before saving
+//  Auto-hash password before saving
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
   this.password = await bcrypt.hash(this.password, 12);
   next();
 });
 
-// 🔐 Instance method to compare passwords
+//  Instance method to compare passwords
 userSchema.methods.correctPassword = async function (candidatePassword, hashedPassword) {
   return await bcrypt.compare(candidatePassword, hashedPassword);
 };
