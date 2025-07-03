@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { X } from 'lucide-react';
-import API from "../api/axios"; // ✅ Use your custom Axios instance
+import API from "../api/axios"; 
 
 const DropdownSidebar = ({
   darkMode,
