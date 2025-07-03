@@ -9,12 +9,12 @@ router.post('/', async (req, res) => {
   try {
     const { feedback, rating, feedbackType } = req.body;
 
-    // ✅ Basic validation
+    //  Basic validation
     if (!feedback || typeof rating !== 'number') {
       return res.status(400).json({ error: 'Feedback and rating are required.' });
     }
 
-    // 🔐 Extract token
+    //  Extract token
     const token = req.headers.authorization?.split(' ')[1];
     if (!token) return res.status(401).json({ error: 'No token provided' });
 
@@ -25,13 +25,13 @@ router.post('/', async (req, res) => {
       return res.status(401).json({ error: 'Invalid token' });
     }
 
-    // ✅ Find user
+    // Find user
     const user = await User.findById(decoded.id);
     if (!user) return res.status(404).json({ error: 'User not found' });
 
     const senderEmail = user.email;
 
-    // 📧 Email transport config
+    //  Email transport config
     const transporter = nodemailer.createTransport({
       service: 'gmail',
       auth: {
@@ -40,13 +40,13 @@ router.post('/', async (req, res) => {
       }
     });
 
-    // ✅ Email options
+    // Email options
     const RECEIVING_EMAIL = process.env.FEEDBACK_RECEIVING_EMAIL || 'your-actual-email@gmail.com';
 
     const mailOptions = {
       from: `"BookRadio Feedback" <${process.env.FEEDBACK_SENDER_EMAIL || process.env.EMAIL_USER}>`,
       to: RECEIVING_EMAIL,
-      subject: `📢 New Feedback - ${feedbackType || 'General'}`,
+      subject: ` New Feedback - ${feedbackType || 'General'}`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h2 style="color: #333;">New Feedback Received</h2>
@@ -66,12 +66,12 @@ router.post('/', async (req, res) => {
       `,
     };
 
-    // 🔄 Optional: verify transporter (skip in production for performance)
+    //  Optional: verify transporter (skip in production for performance)
     if (process.env.NODE_ENV !== 'production') {
       await transporter.verify();
     }
 
-    // 📤 Send email
+    //  Send email
     await transporter.sendMail(mailOptions);
 
     return res.status(200).json({
@@ -80,7 +80,7 @@ router.post('/', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ Error sending feedback:', error);
+    console.error(' Error sending feedback:', error);
 
     let errorMessage = 'Server error while sending feedback';
     if (error.code === 'EAUTH') {
