@@ -49,7 +49,7 @@ const updateProfile = async (req, res) => {
       avatar: updatedUser.avatar || null, // Only filename or null
     });
   } catch (err) {
-    console.error("❌ Profile update error:", err);
+    console.error(" Profile update error:", err);
     res.status(500).json({ message: "Server error while updating profile" });
   }
 };
