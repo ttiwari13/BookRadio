@@ -38,7 +38,8 @@
 ### 1. Clone the Repo
 
 - git clone https://github.com/your-username/bookradio.git
-- cd bookradio
-- npm run dev
+- cd bookradio/cd frontend/cd backend
+- npm run dev(for frontend)
+- npm start(for backend)
 
 ### Please run the frontend and backend file seperately
