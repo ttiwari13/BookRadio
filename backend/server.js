@@ -1,4 +1,3 @@
-// server.js - FIXED FOR EXPRESS v5
 const express = require("express");
 const dotenv = require("dotenv");
 const path = require("path");
@@ -18,8 +17,8 @@ app.use(express.json());
 app.use(cors({
   origin: [
     'https://bookfrontend-mauve.vercel.app',
-    'http://localhost:4000',  // ✅ Added this line
-    'http://127.0.0.1:4000'   // ✅ Added this line too
+    'http://localhost:4000',  
+    'http://127.0.0.1:4000'   
   ],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
@@ -29,7 +28,7 @@ app.use(cors({
 // Handle preflight requests
 app.options('*', cors());
 
-// FIX: Use absolute path for static files in Express v5
+
 app.use('/uploads', express.static('uploads', {
   setHeaders: (res, path) => {
     res.setHeader('Cache-Control', 'no-cache');
@@ -66,11 +65,11 @@ const PORT = process.env.PORT || 10000;
 
 app.listen(PORT, '0.0.0.0', (err) => {
   if (err) {
-    console.error('❌ Server failed to start:', err);
+    console.error(' Server failed to start:', err);
     process.exit(1);
   }
   
-  console.log(`✅ Server running on port ${PORT}`);
-  console.log(`🌐 URL: https://bookradio-1.onrender.com`);
-  console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(` Server running on port ${PORT}`);
+  console.log(` URL: https://bookradio-1.onrender.com`);
+  console.log(` Environment: ${process.env.NODE_ENV || 'development'}`);
 });
