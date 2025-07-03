@@ -59,7 +59,7 @@ const bookSchema = new mongoose.Schema({
     min: 0
   },
   
-  // ✅ Enhanced Genre Support
+  //  Enhanced Genre Support
   genre: {
     type: String,
     required: true,
@@ -72,7 +72,7 @@ const bookSchema = new mongoose.Schema({
     index: true // All genres/tags for detailed filtering
   }],
   
-  // ✅ Genre Metadata (for debugging and analysis)
+  //  Genre Metadata (for debugging and analysis)
   detectedGenres: [{
     type: String,
     trim: true
@@ -144,14 +144,14 @@ const bookSchema = new mongoose.Schema({
   toObject: { virtuals: true }
 });
 
-// ✅ Indexes for performance
+//  Indexes for performance
 bookSchema.index({ genre: 1, language: 1 });
 bookSchema.index({ tags: 1, year: 1 });
 bookSchema.index({ author: 1, title: 1 });
 bookSchema.index({ duration: 1, genre: 1 });
 bookSchema.index({ createdAt: -1 });
 
-// ✅ Pre-save middleware to update search text and computed fields
+//  Pre-save middleware to update search text and computed fields
 bookSchema.pre('save', function(next) {
   // Update search text for full-text search
   this.searchText = `${this.title} ${this.author} ${this.description} ${this.tags.join(' ')}`;
@@ -172,7 +172,7 @@ bookSchema.pre('save', function(next) {
   next();
 });
 
-// ✅ Virtual fields
+//  Virtual fields
 bookSchema.virtual('totalEpisodes').get(function() {
   return this.episodes ? this.episodes.length : 0;
 });
@@ -189,7 +189,7 @@ bookSchema.virtual('genreList').get(function() {
   return this.tags && this.tags.length > 0 ? this.tags : [this.genre];
 });
 
-// ✅ Static methods for common queries
+//  Static methods for common queries
 bookSchema.statics.findByGenre = function(genre, options = {}) {
   const { limit = 20, skip = 0, sortBy = 'title' } = options;
   
@@ -256,7 +256,7 @@ bookSchema.statics.getPopularBooks = function(limit = 10) {
     .limit(limit);
 };
 
-// ✅ Instance methods
+//  Instance methods
 bookSchema.methods.addGenre = function(genre) {
   if (!this.tags.includes(genre)) {
     this.tags.push(genre);
@@ -286,8 +286,7 @@ bookSchema.statics.getFilterOptions = async function () {
   return { languages, genres, authors, durations };
 };
 
-
-// ✅ Export the model
+// Export the model
 const Book = mongoose.model('Book', bookSchema);
 
 module.exports = Book;
