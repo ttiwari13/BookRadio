@@ -1,4 +1,3 @@
-// ✅ OPTIMIZED: Seed 10,000 LibriVox books in 100 batches of 100 each
 const axios = require("axios");
 const mongoose = require("mongoose");
 const xml2js = require("xml2js");
@@ -100,11 +99,11 @@ async function getGenresFromPage(bookUrl, retryCount = 0) {
 
   } catch (err) {
     if (retryCount < MAX_RETRIES) {
-      console.warn(`⚠️ Retry ${retryCount + 1}/${MAX_RETRIES} for: ${bookUrl}`);
+      console.warn(` Retry ${retryCount + 1}/${MAX_RETRIES} for: ${bookUrl}`);
       await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
       return getGenresFromPage(bookUrl, retryCount + 1);
     }
-    console.warn(`❌ Genre scraping failed after ${MAX_RETRIES} retries: ${bookUrl}`);
+    console.warn(` Genre scraping failed after ${MAX_RETRIES} retries: ${bookUrl}`);
     return [];
   }
 }
@@ -150,7 +149,7 @@ async function fetchEpisodesRSS(rssUrl, retryCount = 0) {
       await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
       return fetchEpisodesRSS(rssUrl, retryCount + 1);
     }
-    console.warn(`❌ RSS fetch failed after ${MAX_RETRIES} retries: ${rssUrl}`);
+    console.warn(` RSS fetch failed after ${MAX_RETRIES} retries: ${rssUrl}`);
     return [];
   }
 }
@@ -192,9 +191,9 @@ function processGenres(book, scrapedGenres, detectedGenres) {
 
 async function seedBooks() {
   const totalBatches = Math.ceil(TOTAL_BOOKS / BATCH_SIZE);
-  console.log(`🚀 Starting to seed ${TOTAL_BOOKS.toLocaleString()} books`);
-  console.log(`📦 Processing in ${totalBatches} batches of ${BATCH_SIZE} books each`);
-  console.log(`⏱️ Estimated time: ${Math.round((totalBatches * 2) / 60)} hours\n`);
+  console.log(` Starting to seed ${TOTAL_BOOKS.toLocaleString()} books`);
+  console.log(` Processing in ${totalBatches} batches of ${BATCH_SIZE} books each`);
+  console.log(`Estimated time: ${Math.round((totalBatches * 2) / 60)} hours\n`);
   
   let totalSavedBooks = 0;
   let booksWithGenres = 0;
@@ -205,7 +204,7 @@ async function seedBooks() {
     const currentBatch = Math.floor(offset / BATCH_SIZE) + 1;
     const booksInThisBatch = Math.min(BATCH_SIZE, TOTAL_BOOKS - offset);
     
-    console.log(`\n📦 BATCH ${currentBatch}/${totalBatches}: Processing books ${offset + 1} to ${offset + booksInThisBatch}`);
+    console.log(`\n BATCH ${currentBatch}/${totalBatches}: Processing books ${offset + 1} to ${offset + booksInThisBatch}`);
     
     try {
       const res = await axios.get(
@@ -214,7 +213,7 @@ async function seedBooks() {
       );
 
       if (!res.data.books || res.data.books.length === 0) {
-        console.log(`🛑 No more books found at offset ${offset}`);
+        console.log(` No more books found at offset ${offset}`);
         break;
       }
 
@@ -223,7 +222,7 @@ async function seedBooks() {
 
       for (const [index, b] of res.data.books.entries()) {
         const bookNumber = offset + index + 1;
-        process.stdout.write(`\r📖 Processing book ${bookNumber}/${TOTAL_BOOKS}: ${b.title?.substring(0, 50)}...`);
+        process.stdout.write(`\r Processing book ${bookNumber}/${TOTAL_BOOKS}: ${b.title?.substring(0, 50)}...`);
         
         const authorFirst = b.authors?.[0]?.first_name || "";
         const authorLast = b.authors?.[0]?.last_name || "";
@@ -301,21 +300,21 @@ async function seedBooks() {
         const booksPerMinute = totalSavedBooks / elapsed;
         const estimatedRemaining = (TOTAL_BOOKS - totalSavedBooks) / booksPerMinute;
         
-        console.log(`\n✅ BATCH ${currentBatch} COMPLETE:`);
-        console.log(`   📚 Saved: ${booksWithEpisodes.length} books`);
-        console.log(`   🏷️ With genres: ${batchGenreCount} (${((batchGenreCount/booksWithEpisodes.length)*100).toFixed(1)}%)`);
-        console.log(`   📊 Total progress: ${totalSavedBooks}/${TOTAL_BOOKS} (${((totalSavedBooks/TOTAL_BOOKS)*100).toFixed(1)}%)`);
-        console.log(`   🏷️ Overall genre rate: ${((booksWithGenres/totalSavedBooks)*100).toFixed(1)}%`);
-        console.log(`   ⏱️ Estimated remaining: ${Math.round(estimatedRemaining)} minutes`);
+        console.log(`\n BATCH ${currentBatch} COMPLETE:`);
+        console.log(`    Saved: ${booksWithEpisodes.length} books`);
+        console.log(`    With genres: ${batchGenreCount} (${((batchGenreCount/booksWithEpisodes.length)*100).toFixed(1)}%)`);
+        console.log(`    Total progress: ${totalSavedBooks}/${TOTAL_BOOKS} (${((totalSavedBooks/TOTAL_BOOKS)*100).toFixed(1)}%)`);
+        console.log(`    Overall genre rate: ${((booksWithGenres/totalSavedBooks)*100).toFixed(1)}%`);
+        console.log(`    Estimated remaining: ${Math.round(estimatedRemaining)} minutes`);
       }
 
     } catch (err) {
-      console.error(`\n❌ Error in batch ${currentBatch}:`, err.message);
+      console.error(`\n Error in batch ${currentBatch}:`, err.message);
       
       // Add exponential backoff for network errors
       if (err.code === 'ECONNREFUSED' || err.code === 'ETIMEDOUT') {
         const backoffTime = Math.min(5000 * Math.pow(2, currentBatch % 3), 30000);
-        console.log(`⏰ Network issue, waiting ${backoffTime/1000} seconds...`);
+        console.log(` Network issue, waiting ${backoffTime/1000} seconds...`);
         await new Promise(resolve => setTimeout(resolve, backoffTime));
       }
     }
@@ -328,13 +327,13 @@ async function seedBooks() {
 
   // Final statistics
   const totalTime = (Date.now() - startTime) / 1000 / 60; // minutes
-  console.log(`\n🎉 SEEDING COMPLETE!`);
-  console.log(`📊 FINAL STATISTICS:`);
-  console.log(`   📚 Total books saved: ${totalSavedBooks.toLocaleString()}`);
-  console.log(`   🏷️ Books with genres: ${booksWithGenres.toLocaleString()} (${((booksWithGenres/totalSavedBooks)*100).toFixed(1)}%)`);
-  console.log(`   ⏩ Books skipped (no audio): ${totalSkipped.toLocaleString()}`);
-  console.log(`   ⏱️ Total time: ${Math.round(totalTime)} minutes`);
-  console.log(`   📈 Average speed: ${(totalSavedBooks/totalTime).toFixed(1)} books/minute`);
+  console.log(`\n SEEDING COMPLETE!`);
+  console.log(` FINAL STATISTICS:`);
+  console.log(`    Total books saved: ${totalSavedBooks.toLocaleString()}`);
+  console.log(`    Books with genres: ${booksWithGenres.toLocaleString()} (${((booksWithGenres/totalSavedBooks)*100).toFixed(1)}%)`);
+  console.log(`    Books skipped (no audio): ${totalSkipped.toLocaleString()}`);
+  console.log(`    Total time: ${Math.round(totalTime)} minutes`);
+  console.log(`    Average speed: ${(totalSavedBooks/totalTime).toFixed(1)} books/minute`);
 
   // Show genre distribution
   try {
@@ -345,12 +344,12 @@ async function seedBooks() {
       { $limit: 15 }
     ]);
     
-    console.log(`\n📋 TOP GENRES IN DATABASE:`);
+    console.log(`\n TOP GENRES IN DATABASE:`);
     genreStats.forEach((stat, index) => {
       console.log(`   ${(index + 1).toString().padStart(2)}. ${stat._id}: ${stat.count.toLocaleString()} books`);
     });
   } catch (err) {
-    console.log(`⚠️ Could not generate genre statistics: ${err.message}`);
+    console.log(` Could not generate genre statistics: ${err.message}`);
   }
 
   mongoose.connection.close();
@@ -358,28 +357,28 @@ async function seedBooks() {
 
 // Enhanced error handling
 process.on('unhandledRejection', (err) => {
-  console.error('\n❌ Unhandled Promise Rejection:', err);
+  console.error('\n Unhandled Promise Rejection:', err);
   mongoose.connection.close();
   process.exit(1);
 });
 
 process.on('SIGINT', () => {
-  console.log('\n🛑 Seeding interrupted by user');
+  console.log('\n Seeding interrupted by user');
   mongoose.connection.close();
   process.exit(0);
 });
 
 process.on('SIGTERM', () => {
-  console.log('\n🛑 Seeding terminated');
+  console.log('\n Seeding terminated');
   mongoose.connection.close();
   process.exit(0);
 });
 
 // Start seeding
-console.log('🔥 LibriVox Mass Seeder - 10,000 Books in 100 Batches');
+console.log(' LibriVox Mass Seeder - 10,000 Books in 100 Batches');
 console.log('=' .repeat(60));
 seedBooks().catch(err => {
-  console.error('❌ Seeding failed:', err);
+  console.error(' Seeding failed:', err);
   mongoose.connection.close();
   process.exit(1);
 });
