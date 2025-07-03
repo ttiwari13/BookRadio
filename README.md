@@ -43,3 +43,9 @@
 - npm start(for backend)
 
 ### Please run the frontend and backend file seperately
+
+##  Contributing
+
+Have an idea or want to improve BookRadio?  
+You're welcome to contribute — just **fork the repo** and **open a Pull Request**!
+
