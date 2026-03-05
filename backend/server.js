@@ -14,7 +14,7 @@ app.use(express.json());
 
 app.use(cors({
   origin: [
-    'https://bookfrontend-mauve.vercel.app',
+    'https://book-radio.vercel.app',
     'http://localhost:5173',
     'http://localhost:4000',
     'http://127.0.0.1:5173',
