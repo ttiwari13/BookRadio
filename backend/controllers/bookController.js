@@ -1,4 +1,4 @@
-// controllers/bookController.js
+
 const Book = require('../models/Book');
 
 const searchBooks = async (req, res) => {
@@ -12,7 +12,6 @@ const searchBooks = async (req, res) => {
       return res.status(400).json({ message: "Search query is required" });
     }
 
-    // Create search filters
     const regex = new RegExp(query, 'i');
     const searchFilters = {
       $or: [
@@ -24,7 +23,6 @@ const searchBooks = async (req, res) => {
       ]
     };
 
-    // Add additional filters if provided
     if (req.query.language) searchFilters.language = req.query.language;
     if (req.query.genre) searchFilters.genre = req.query.genre;
     if (req.query.duration) searchFilters.durationCategory = req.query.duration;
@@ -48,7 +46,6 @@ const searchBooks = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Search error:', error);
     res.status(500).json({ 
       message: "Search failed", 
       error: error.message 
@@ -58,5 +55,5 @@ const searchBooks = async (req, res) => {
 
 module.exports = {
   searchBooks,
-  // Add other controller functions here...
+  
 };

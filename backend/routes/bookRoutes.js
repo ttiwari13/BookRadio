@@ -4,7 +4,6 @@ const Book = require('../models/Book');
 const { protect } = require('../middleware/authMiddleware');
 const { searchBooks } = require('../controllers/bookController.js');
 
-//  GET /api/books/filters - Get all filter options
 router.get('/filters', async (req, res) => {
   try {
     const filterOptions = await Book.getFilterOptions();
@@ -14,10 +13,8 @@ router.get('/filters', async (req, res) => {
   }
 });
 
-//  GET /api/books/search?q=query (controller-based)
 router.get('/search', searchBooks);
 
-//  GET /api/books/tag/:tag
 router.get('/tag/:tag', async (req, res) => {
   try {
     const books = await Book.find({ tags: req.params.tag }).limit(20);
@@ -27,7 +24,6 @@ router.get('/tag/:tag', async (req, res) => {
   }
 });
 
-//  GET /api/books/author/:name
 router.get('/author/:name', async (req, res) => {
   try {
     const regex = new RegExp(req.params.name, 'i');
@@ -38,7 +34,6 @@ router.get('/author/:name', async (req, res) => {
   }
 });
 
-//  GET /api/books?page=1&limit=20&language=English&genre=Fiction&duration=short&author=Tolkien
 router.get('/', async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
@@ -81,7 +76,6 @@ router.get('/', async (req, res) => {
   }
 });
 
-//  GET /api/books/:id/episodes
 router.get('/:id/episodes', protect, async (req, res) => {
   try {
     if (!req.params.id.match(/^[0-9a-fA-F]{24}$/)) {
@@ -133,7 +127,6 @@ router.get('/:id/episodes', protect, async (req, res) => {
   }
 });
 
-//  GET /api/books/:id
 router.get('/:id', async (req, res) => {
   try {
     if (!req.params.id.match(/^[0-9a-fA-F]{24}$/)) {

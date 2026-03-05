@@ -21,24 +21,26 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: [true, "Password is required"],
       minlength: [6, "Password must be at least 6 characters"],
-      select: false, // Do not return password in queries
+      select: false,
     },
-    avatar: {
-      type: String,
-      default: "",
-    },
+    avatar: { type: String, default: "" },
+    favorites: [{ type: mongoose.Schema.Types.ObjectId, ref: "Book" }],
+    history: [
+      {
+        book: { type: mongoose.Schema.Types.ObjectId, ref: "Book" },
+        playedAt: { type: Date, default: Date.now },
+      },
+    ],
   },
   { timestamps: true }
 );
 
-//  Auto-hash password before saving
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
   this.password = await bcrypt.hash(this.password, 12);
   next();
 });
 
-//  Instance method to compare passwords
 userSchema.methods.correctPassword = async function (candidatePassword, hashedPassword) {
   return await bcrypt.compare(candidatePassword, hashedPassword);
 };

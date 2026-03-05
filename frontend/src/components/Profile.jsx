@@ -3,6 +3,8 @@ import axios from 'axios';
 import { LogOut, ChevronDown, ChevronUp, Pencil, Sun, Moon, X } from 'lucide-react';
 import { useAuth } from '../context/useAuth';
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:10000';
+
 const Profile = () => {
   const { user, setUser } = useAuth();
   const [username, setUsername] = useState('');
@@ -26,7 +28,7 @@ const Profile = () => {
 
   const getAvatarUrl = useCallback(() => {
     if (selectedFile && objectUrlRef.current) return objectUrlRef.current;
-    if (user?.avatar) return `http://localhost:5000/uploads/${user.avatar}?t=${avatarKey}`;
+    if (user?.avatar) return `${API_BASE}/uploads/${user.avatar}?t=${avatarKey}`;
     return '/default-avatar.png';
   }, [user?.avatar, selectedFile, avatarKey]);
 
@@ -34,9 +36,8 @@ const Profile = () => {
     const fetchProfile = async () => {
       if (!token || initialLoadRef.current) return;
       initialLoadRef.current = true;
-
       try {
-        const { data } = await axios.get('http://localhost:5000/api/profile', {
+        const { data } = await axios.get(`${API_BASE}/api/profile`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         setUser(data);
@@ -45,12 +46,10 @@ const Profile = () => {
         setIsInitialized(true);
         setAvatarKey(Date.now());
       } catch (err) {
-        console.error('❌ Error fetching profile:', err);
         setError('Failed to load profile');
         setIsInitialized(true);
       }
     };
-
     fetchProfile();
   }, [token, setUser]);
 
@@ -77,12 +76,9 @@ const Profile = () => {
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
     if (!file.type.startsWith('image/')) return setError('Invalid image file');
     if (file.size > 5 * 1024 * 1024) return setError('Max size 5MB');
-
     if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current);
-
     objectUrlRef.current = URL.createObjectURL(file);
     setSelectedFile(file);
     setAvatarPreview(objectUrlRef.current);
@@ -106,7 +102,6 @@ const Profile = () => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
-
     try {
       const formData = new FormData();
       formData.append('username', username);
@@ -116,14 +111,12 @@ const Profile = () => {
         formData.append('password', newPassword);
         formData.append('currentPassword', currentPassword);
       }
-
-      const { data } = await axios.put('http://localhost:5000/api/profile', formData, {
+      const { data } = await axios.put(`${API_BASE}/api/profile`, formData, {
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data',
         },
       });
-
       setUser(data);
       setSelectedFile(null);
       fileInputRef.current && (fileInputRef.current.value = '');
@@ -132,12 +125,11 @@ const Profile = () => {
       setCurrentPassword('');
       setNewPassword('');
       setShowPasswordFields(false);
-      alert('✅ Profile updated');
+      alert('Profile updated');
     } catch (err) {
-      console.error('❌ Update error:', err);
       const message = err.response?.data?.message || 'Update failed';
       setError(message);
-      alert(`❌ ${message}`);
+      alert(`${message}`);
     } finally {
       setIsLoading(false);
     }
@@ -174,12 +166,12 @@ const Profile = () => {
       {error && <div className="mb-4 p-3 bg-red-100 text-red-700 rounded border">{error}</div>}
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="flex flex-col items-center">
+       <div className="flex flex-col items-center min-h-[120px]">
           <img
             key={`${user.avatar}-${avatarKey}`}
             src={avatarPreview}
             onError={handleAvatarError}
-            className="w-24 h-24 rounded-full object-cover border dark:border-green-400"
+           className="w-24 h-24 rounded-full object-cover border dark:border-green-400 shrink-0"
             alt="avatar"
           />
           {!editAvatarMode ? (

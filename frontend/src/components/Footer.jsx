@@ -83,10 +83,7 @@ const Footer = () => {
             
             {/* Brand Section */}
             <div className="lg:col-span-2 space-y-6">
-              <a
-                href="/"
-                className="inline-block group"
-              >
+              <a href="/" className="inline-block group">
                 <div className="relative">
                   <h2 className="text-4xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 dark:from-white dark:to-gray-300 bg-clip-text text-transparent group-hover:from-[#D2ECC1] group-hover:to-[#A8D8A0] transition-all duration-500">
                     BookRadio
@@ -144,7 +141,7 @@ const Footer = () => {
                     <span className="text-gray-600 dark:text-gray-400 group-hover:text-[#D2ECC1] transition-colors duration-300">
                       {link.label}
                     </span>
-                    <div className="w-0 group-hover:w-8 h-0.5 bg-gradient-to-r from-[#D2ECC1] to-[#A8D8A0] transition-all duration-300 mt-1">                    </div>
+                    <div className="w-0 group-hover:w-8 h-0.5 bg-gradient-to-r from-[#D2ECC1] to-[#A8D8A0] transition-all duration-300 mt-1"></div>
                   </a>
                 ))}
               </nav>
@@ -232,6 +229,27 @@ const Footer = () => {
               </div>
             </div>
           </div>
+
+          {/* LibriVox Disclaimer */}
+          <div className={`mt-6 transition-all duration-1000 delay-1000 ${
+            isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+          }`}>
+            <p className="text-xs text-gray-400 dark:text-gray-600 text-center max-w-2xl mx-auto leading-relaxed">
+              All audiobooks on BookRadio are sourced from{" "}
+              <a
+                href="https://librivox.org"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-[#D2ECC1] transition-colors duration-300"
+              >
+                LibriVox
+              </a>
+              , a non-profit volunteer project producing free public domain audiobooks.
+              All recordings are released into the public domain and free to use for any purpose.
+              BookRadio is an independent project and is not affiliated with or endorsed by LibriVox.
+            </p>
+          </div>
+
         </div>
       </footer>
     </>

@@ -1,13 +1,12 @@
-// Home.js - Updated with API instance
 import { useState, useEffect, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useTheme } from "../context/ThemeContext";
 import LoginModal from "../components/LoginModal";
 import SignupModal from "../components/SignupModal";
-import BookCard from './BookCard';
+import BookCard, { BookCardSkeleton } from './BookCard';
 import Layout from "../components/Layout";
-import API from "../api/axios"; // ✅ Use your custom instance named API
+import API from "../api/axios";
 import { useAuth } from "../context/useAuth";
 
 const Home = () => {
@@ -18,7 +17,7 @@ const Home = () => {
   const [modalType, setModalType] = useState("login");
   const [connectionError, setConnectionError] = useState(null);
   const [books, setBooks] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true); 
   const [initialLoad, setInitialLoad] = useState(true);
   const [authChecked, setAuthChecked] = useState(false);
   const authCheckRef = useRef(false);
@@ -45,11 +44,8 @@ const Home = () => {
 
   const setPage = (newPage) => {
     const params = new URLSearchParams(searchParams);
-    if (newPage === 1) {
-      params.delete('page');
-    } else {
-      params.set('page', newPage.toString());
-    }
+    if (newPage === 1) params.delete('page');
+    else params.set('page', newPage.toString());
     setSearchParams(params);
   };
 
@@ -107,11 +103,10 @@ const Home = () => {
 
     checkLogin();
   }, [setIsLoggedIn]);
-console.log("👉 Base URL:", API.defaults.baseURL);
 
   useEffect(() => {
     const fetchBooks = async () => {
-      if (initialLoad) setLoading(true);
+      setLoading(true);
       try {
         const queryParams = new URLSearchParams();
         if (searchQuery.trim()) queryParams.set("q", searchQuery.trim());
@@ -123,7 +118,6 @@ console.log("👉 Base URL:", API.defaults.baseURL);
         const res = await API.get(`/api/books?${queryParams.toString()}`, { timeout: 10000 });
         const data = res.data;
         setBooks(Array.isArray(data.books) ? data.books : []);
-
       } catch (error) {
         console.error("Fetch error:", error.message);
         setBooks([]);
@@ -167,11 +161,8 @@ console.log("👉 Base URL:", API.defaults.baseURL);
 
   const handleSearch = () => {
     const params = new URLSearchParams(searchParams);
-    if (searchQuery.trim()) {
-      params.set("q", searchQuery.trim());
-    } else {
-      params.delete("q");
-    }
+    if (searchQuery.trim()) params.set("q", searchQuery.trim());
+    else params.delete("q");
     params.delete("page");
     setSearchParams(params);
   };
@@ -186,17 +177,12 @@ console.log("👉 Base URL:", API.defaults.baseURL);
   const switchToSignup = () => setModalType("signup");
   const switchToLogin = () => setModalType("login");
 
-  if (!authChecked) {
-    return (
-      <div className={`flex justify-center items-center min-h-screen ${darkMode ? 'bg-gray-950 text-white' : 'bg-gray-100 text-black'}`}>
-        Loading...
-      </div>
-    );
-  }
+  const showSkeletons = !authChecked || loading;
 
   return (
     <>
-      {!isLoggedIn && (
+
+      {authChecked && !isLoggedIn && (
         <>
           <div className="fixed inset-0 bg-black/30 z-30" />
           {modalType === "login" && <LoginModal onClose={closeModal} onSwitchToSignup={switchToSignup} />}
@@ -222,40 +208,42 @@ console.log("👉 Base URL:", API.defaults.baseURL);
             </div>
           )}
 
-          {loading ? (
-            <div className="text-center py-20">Loading...</div>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 p-2 sm:p-4">
-              {books.length > 0 ? (
-                books.map(book => (
-                  <BookCard key={book._id} book={book} currentPage={currentPage} />
-                ))
-              ) : (
-                <div className="col-span-full text-center py-20">No books found</div>
-              )}
-            </div>
-          )}
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 p-2 sm:p-4">
+            {showSkeletons ? (
+              Array.from({ length: 12 }).map((_, i) => (
+                <BookCardSkeleton key={i} />
+              ))
+            ) : books.length > 0 ? (
+              books.map(book => (
+                <BookCard key={book._id} book={book} currentPage={currentPage} />
+              ))
+            ) : (
+              <div className="col-span-full text-center py-20">No books found</div>
+            )}
+          </div>
 
-          {books.length > 0 && (
-            <div className="flex justify-center items-center mt-12 gap-4">
-              <button 
-                onClick={() => setPage(Math.max(currentPage - 1, 1))} 
-                disabled={currentPage === 1} 
-                className="bg-gray-200 dark:bg-gray-700 p-2 rounded disabled:opacity-50"
-              >
-                <ChevronLeft />
-              </button>
-              <span className="px-4 py-2 bg-green-200 dark:bg-green-700 text-black dark:text-white rounded">
-                {currentPage}
-              </span>
-              <button 
-                onClick={() => setPage(currentPage + 1)} 
-                className="bg-gray-200 dark:bg-gray-700 p-2 rounded"
-              >
-                <ChevronRight />
-              </button>
-            </div>
-          )}
+          <div className="flex justify-center items-center mt-12 gap-4 min-h-[52px]">
+            {books.length > 0 && !showSkeletons && (
+              <>
+                <button
+                  onClick={() => setPage(Math.max(currentPage - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="bg-gray-200 dark:bg-gray-700 p-2 rounded disabled:opacity-50"
+                >
+                  <ChevronLeft />
+                </button>
+                <span className="px-4 py-2 bg-green-200 dark:bg-green-700 text-black dark:text-white rounded">
+                  {currentPage}
+                </span>
+                <button
+                  onClick={() => setPage(currentPage + 1)}
+                  className="bg-gray-200 dark:bg-gray-700 p-2 rounded"
+                >
+                  <ChevronRight />
+                </button>
+              </>
+            )}
+          </div>
         </main>
       </Layout>
     </>
