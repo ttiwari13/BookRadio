@@ -1,387 +1,505 @@
-import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
-import { useEffect, useRef, useState } from 'react';
+import { useParams, useSearchParams } from 'react-router-dom';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import {
   Clock, Globe, Tag, Play, BookOpen,
-  Star, SkipForward, SkipBack, Pause, Heart, Share2, Download, Volume2
+  Star, SkipForward, SkipBack, Pause, Heart, Share2, Download, Volume2, VolumeX
 } from 'lucide-react';
 import API from '../api/axios';
-import { useTheme } from '../context/ThemeContext';
 import { useFavorites } from '../context/FavoritesContext';
 import { useHistory } from '../context/HistoryContext';
 import Layout from './Layout';
 
+// ─────────────────────────────────────────────────────────────────
+// EpisodePlayer
+// ─────────────────────────────────────────────────────────────────
+const EpisodePlayer = ({ audioRef, title, isPlaying, onTogglePlay, onJump }) => {
+  const seekRef  = useRef(null);
+  const rafRef   = useRef(null);
+  const dragging = useRef(false);
+
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration,    setDuration]    = useState(0);
+  const [volume,      setVolume]      = useState(100);
+  const [muted,       setMuted]       = useState(false);
+
+  const fmt = (t) => {
+    if (!isFinite(t) || t < 0) return '0:00';
+    const m = Math.floor(t / 60);
+    const s = Math.floor(t % 60);
+    return `${m}:${s < 10 ? '0' : ''}${s}`;
+  };
+
+  useEffect(() => {
+    const tick = () => {
+      const a = audioRef.current;
+      const s = seekRef.current;
+      if (a && s && !dragging.current && a.duration > 0) {
+        const pct = (a.currentTime / a.duration) * 100;
+        s.value = a.currentTime;
+        s.style.setProperty('--pct', `${pct}%`);
+        setCurrentTime(a.currentTime);
+      }
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [audioRef]);
+
+  useEffect(() => {
+    const a = audioRef.current;
+    if (!a) return;
+    const onMeta = () => {
+      const dur = a.duration || 0;
+      setDuration(dur);
+      setCurrentTime(0);
+      if (seekRef.current) {
+        seekRef.current.max   = dur || 1;
+        seekRef.current.value = 0;
+        seekRef.current.style.setProperty('--pct', '0%');
+      }
+    };
+    if (a.readyState >= 1) onMeta();
+    a.addEventListener('loadedmetadata', onMeta);
+    a.addEventListener('durationchange',  onMeta);
+    return () => {
+      a.removeEventListener('loadedmetadata', onMeta);
+      a.removeEventListener('durationchange',  onMeta);
+    };
+  }, [audioRef]);
+
+  useEffect(() => {
+    const onUp = () => { dragging.current = false; };
+    window.addEventListener('mouseup',  onUp);
+    window.addEventListener('touchend', onUp);
+    return () => {
+      window.removeEventListener('mouseup',  onUp);
+      window.removeEventListener('touchend', onUp);
+    };
+  }, []);
+
+  const onSeekInput = useCallback((e) => {
+    const v   = parseFloat(e.target.value);
+    const max = parseFloat(e.target.max) || 1;
+    e.target.style.setProperty('--pct', `${(v / max) * 100}%`);
+    setCurrentTime(v);
+    if (audioRef.current) audioRef.current.currentTime = v;
+  }, [audioRef]);
+
+  const onVolChange = (e) => {
+    const v = Number(e.target.value);
+    setVolume(v);
+    setMuted(v === 0);
+    if (audioRef.current) { audioRef.current.volume = v / 100; audioRef.current.muted = v === 0; }
+  };
+
+  const toggleMute = () => {
+    const next = !muted;
+    setMuted(next);
+    if (audioRef.current) audioRef.current.muted = next;
+  };
+
+  return (
+    <div className="mt-4 p-4 rounded-xl border backdrop-blur-sm"
+      style={{ background: 'rgba(210,236,193,0.08)', borderColor: 'rgba(210,236,193,0.2)' }}>
+
+      <div className="flex flex-wrap justify-between items-center gap-3 mb-4">
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          <div className="w-2 h-2 rounded-full animate-pulse shrink-0" style={{ background: '#D2ECC1' }} />
+          <p className="text-sm truncate font-medium" style={{ color: '#D2ECC1' }}>{title}</p>
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          <button onClick={() => onJump(-10)}
+            className="p-2 rounded-full transition-all hover:scale-110"
+            style={{ color: '#D2ECC1' }}
+            onMouseEnter={e => e.currentTarget.style.background='rgba(210,236,193,0.12)'}
+            onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+            <SkipBack size={17} />
+          </button>
+          <button onClick={onTogglePlay}
+            className="p-3 rounded-full transition-all hover:scale-110 shadow-lg mx-1"
+            style={{ background: '#D2ECC1', color: '#1a2e14' }}
+            onMouseEnter={e => e.currentTarget.style.background='#bde0a8'}
+            onMouseLeave={e => e.currentTarget.style.background='#D2ECC1'}>
+            {isPlaying ? <Pause size={18} /> : <Play size={18} />}
+          </button>
+          <button onClick={() => onJump(10)}
+            className="p-2 rounded-full transition-all hover:scale-110"
+            style={{ color: '#D2ECC1' }}
+            onMouseEnter={e => e.currentTarget.style.background='rgba(210,236,193,0.12)'}
+            onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+            <SkipForward size={17} />
+          </button>
+          <div className="flex items-center gap-2 ml-2">
+            <button onClick={toggleMute}
+              className="p-2 rounded-full transition-all hover:scale-110"
+              style={{ color: '#D2ECC1' }}
+              onMouseEnter={e => e.currentTarget.style.background='rgba(210,236,193,0.12)'}
+              onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+              {muted || volume === 0 ? <VolumeX size={16} /> : <Volume2 size={16} />}
+            </button>
+            <input type="range" min={0} max={100} value={muted ? 0 : volume}
+              onChange={onVolChange} className="vol-slider" />
+          </div>
+        </div>
+      </div>
+
+      <input
+        ref={seekRef}
+        type="range"
+        className="seek-slider"
+        min={0}
+        max={duration || 1}
+        step={1}
+        defaultValue={0}
+        onMouseDown={() => { dragging.current = true; }}
+        onTouchStart={() => { dragging.current = true; }}
+        onInput={onSeekInput}
+      />
+      <div className="flex justify-between text-xs tabular-nums mt-1 px-0.5" style={{ color: 'rgba(210,236,193,0.6)' }}>
+        <span>{fmt(currentTime)}</span>
+        <span>{fmt(duration)}</span>
+      </div>
+    </div>
+  );
+};
+
 const BookDetail = () => {
   const { id } = useParams();
-  const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
-  const { darkMode } = useTheme();
   const { isFavorite, toggleFavorite } = useFavorites();
   const { addToHistory } = useHistory();
 
-  const returnPage = searchParams.get('returnPage') || '1';
-
-  const [book, setBook] = useState(null);
-  const [episodes, setEpisodes] = useState([]);
-  const [activeTab, setActiveTab] = useState('overview');
-  const [currentAudioUrl, setCurrentAudioUrl] = useState(null);
+  const [book,                setBook]                = useState(null);
+  const [episodes,            setEpisodes]            = useState([]);
+  const [activeTab,           setActiveTab]           = useState('overview');
+  const [currentAudioUrl,     setCurrentAudioUrl]     = useState(null);
   const [currentEpisodeTitle, setCurrentEpisodeTitle] = useState('');
-  const [currentEpisodeId, setCurrentEpisodeId] = useState(null);
-  const [audioProgress, setAudioProgress] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [showVolumeSlider, setShowVolumeSlider] = useState(false);
-  const [volume, setVolume] = useState(50);
+  const [currentEpisodeId,    setCurrentEpisodeId]    = useState(null);
+  const [isPlaying,           setIsPlaying]           = useState(false);
+  const [loading,             setLoading]             = useState(true);
 
-  const audioRef = useRef();
+  const audioRef = useRef(null);
 
   useEffect(() => {
-    const fetchBook = async () => {
-      try {
-        setLoading(true);
-        const res = await API.get(`/api/books/${id}`);
-        setBook(res.data);
-      } finally {
-        setLoading(false);
-      }
+    const fetch_ = async () => {
+      try { setLoading(true); const res = await API.get(`/api/books/${id}`); setBook(res.data); }
+      finally { setLoading(false); }
     };
-    if (id) fetchBook();
+    if (id) fetch_();
   }, [id]);
 
   useEffect(() => {
-    const fetchEpisodes = async () => {
+    const fetch_ = async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await API.get(`/api/books/${id}/episodes`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const res = await API.get(`/api/books/${id}/episodes`, { headers: { Authorization: `Bearer ${token}` } });
         setEpisodes(res.data || []);
-      } catch (err) {
-        console.error('Error loading episodes', err);
-        setEpisodes([]);
-      }
+      } catch { setEpisodes([]); }
     };
-    if (id) fetchEpisodes();
+    if (id) fetch_();
   }, [id]);
 
-  const formatDuration = (duration) => {
-    if (!duration) return "Unknown";
-    if (typeof duration === "number") {
-      const mins = Math.floor(duration);
-      const secs = Math.round((duration - mins) * 60);
-      return `${mins}m ${secs}s`;
-    }
-    return duration;
+  const formatDuration = (d) => {
+    if (!d) return 'Unknown';
+    if (typeof d === 'number') { const m = Math.floor(d); const s = Math.round((d - m) * 60); return `${m}m ${s}s`; }
+    return d;
   };
 
   const handlePlayEpisode = (ep) => {
+    const newUrl = ep.audioUrl;
     setCurrentEpisodeId(ep._id);
-    setCurrentAudioUrl(ep.audioUrl);
     setCurrentEpisodeTitle(ep.title || `Episode ${ep.episodeNumber}`);
     setIsPlaying(true);
-    setAudioProgress(0);
-    setTimeout(() => { audioRef.current?.play(); }, 100);
+    if (currentAudioUrl === newUrl && audioRef.current) { audioRef.current.play().catch(() => {}); return; }
+    setCurrentAudioUrl(newUrl);
+    setTimeout(() => { if (audioRef.current) { audioRef.current.load(); audioRef.current.play().catch(() => {}); } }, 50);
   };
 
   const togglePlayPause = () => {
     if (!audioRef.current) return;
-    if (isPlaying) { audioRef.current.pause(); }
-    else { audioRef.current.play(); }
-    setIsPlaying(!isPlaying);
+    if (isPlaying) { audioRef.current.pause(); setIsPlaying(false); }
+    else           { audioRef.current.play();  setIsPlaying(true);  }
   };
 
-  const handleSeek = (e) => {
-    const seekTime = (e.nativeEvent.offsetX / e.target.clientWidth) * audioRef.current.duration;
-    audioRef.current.currentTime = seekTime;
-  };
+  const jump = (secs) => { if (audioRef.current) audioRef.current.currentTime += secs; };
 
-  const jump = (secs) => {
-    if (audioRef.current) audioRef.current.currentTime += secs;
-  };
-
-  const onTimeUpdate = () => {
-    if (audioRef.current?.duration) {
-      setAudioProgress((audioRef.current.currentTime / audioRef.current.duration) * 100);
-    }
-  };
-
-  const handleVolumeChange = (e) => {
-    const newVolume = e.target.value;
-    setVolume(newVolume);
-    if (audioRef.current) audioRef.current.volume = newVolume / 100;
-  };
-
-  if (loading) {
-    return (
-      <Layout showSearch={false}>
-        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
-          <div className="text-center space-y-6">
-            <div className="relative">
-              <div className="w-20 h-20 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin"></div>
-              <div className="absolute inset-0 w-20 h-20 border-4 border-transparent border-r-blue-500 rounded-full animate-ping"></div>
-            </div>
-            <div className="text-2xl font-semibold text-white animate-pulse">Loading your book...</div>
-            <div className="flex space-x-1 justify-center">
-              {[0, 1, 2].map(i => (
-                <div key={i} className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{animationDelay: `${i * 0.2}s`}}></div>
-              ))}
-            </div>
+  if (loading) return (
+    <Layout showSearch={false}>
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center">
+        <div className="text-center space-y-6">
+          <div className="relative">
+            <div className="w-20 h-20 border-4 rounded-full animate-spin" style={{ borderColor: 'rgba(210,236,193,0.2)', borderTopColor: '#D2ECC1' }} />
+            <div className="absolute inset-0 w-20 h-20 border-4 border-transparent rounded-full animate-ping" style={{ borderRightColor: '#D2ECC1' }} />
+          </div>
+          <div className="text-2xl font-semibold text-white animate-pulse">Loading your book...</div>
+          <div className="flex space-x-1 justify-center">
+            {[0,1,2].map(i => <div key={i} className="w-2 h-2 rounded-full animate-bounce" style={{ background: '#D2ECC1', animationDelay: `${i*0.2}s` }} />)}
           </div>
         </div>
-      </Layout>
-    );
-  }
+      </div>
+    </Layout>
+  );
 
   return (
     <Layout showSearch={false}>
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900/20 to-slate-900">
+      <style>{`
+        /* ── Seek slider ── */
+        .seek-slider {
+          -webkit-appearance: none; appearance: none;
+          width: 100%; background: transparent;
+          cursor: pointer; outline: none; border: none;
+          display: block; padding: 10px 0; margin: 0; --pct: 0%;
+        }
+        .seek-slider::-webkit-slider-runnable-track {
+          height: 4px; border-radius: 99px;
+          background: linear-gradient(to right, #D2ECC1 var(--pct), rgba(210,236,193,0.2) var(--pct));
+          transition: height 0.15s;
+        }
+        .seek-slider:hover::-webkit-slider-runnable-track { height: 6px; }
+        .seek-slider::-moz-range-track    { height: 4px; border-radius: 99px; background: rgba(210,236,193,0.2); }
+        .seek-slider::-moz-range-progress { height: 4px; border-radius: 99px; background: #D2ECC1; }
+        .seek-slider::-webkit-slider-thumb {
+          -webkit-appearance: none; width: 0; height: 0; border-radius: 50%;
+          background: #D2ECC1; margin-top: -4px;
+          transition: width 0.12s, height 0.12s, margin-top 0.12s;
+        }
+        .seek-slider:hover::-webkit-slider-thumb,
+        .seek-slider:active::-webkit-slider-thumb { width: 14px; height: 14px; margin-top: -5px; }
+        .seek-slider::-moz-range-thumb { width: 0; height: 0; border: none; background: #D2ECC1; transition: width 0.12s, height 0.12s; }
+        .seek-slider:hover::-moz-range-thumb,
+        .seek-slider:active::-moz-range-thumb { width: 14px; height: 14px; }
+        @media (hover: none) {
+          .seek-slider::-webkit-slider-thumb { width: 18px !important; height: 18px !important; margin-top: -7px !important; }
+          .seek-slider::-moz-range-thumb     { width: 18px !important; height: 18px !important; }
+        }
 
+        /* ── Volume slider ── */
+        .vol-slider {
+          -webkit-appearance: none; appearance: none;
+          width: 70px; height: 3px; border-radius: 99px;
+          background: rgba(210,236,193,0.25); cursor: pointer; outline: none; border: none; padding: 6px 0;
+        }
+        .vol-slider::-webkit-slider-thumb {
+          -webkit-appearance: none; width: 11px; height: 11px;
+          border-radius: 50%; background: #D2ECC1; cursor: pointer; margin-top: -4px;
+        }
+        .vol-slider::-moz-range-thumb { width: 11px; height: 11px; border-radius: 50%; background: #D2ECC1; border: none; }
+
+        .tabs-row { scrollbar-width: none; }
+        .tabs-row::-webkit-scrollbar { display: none; }
+      `}</style>
+
+      <audio ref={audioRef} src={currentAudioUrl} onEnded={() => setIsPlaying(false)} />
+
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800/80 to-slate-900">
         <div className="fixed inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl animate-pulse"></div>
-          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl animate-pulse" style={{animationDelay: '2s'}}></div>
-          <div className="absolute top-1/2 left-1/2 w-96 h-96 bg-teal-500/5 rounded-full blur-3xl animate-pulse" style={{animationDelay: '4s'}}></div>
+          <div className="absolute -top-40 -right-40 w-96 h-96 rounded-full blur-3xl animate-pulse"
+            style={{ background: 'rgba(210,236,193,0.06)' }} />
+          <div className="absolute -bottom-40 -left-40 w-96 h-96 rounded-full blur-3xl animate-pulse"
+            style={{ background: 'rgba(210,236,193,0.04)', animationDelay: '2s' }} />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 rounded-full blur-3xl animate-pulse"
+            style={{ background: 'rgba(210,236,193,0.03)', animationDelay: '4s' }} />
         </div>
 
-        <div className="relative container mx-auto px-4 py-6 z-10">
-          <div className="grid lg:grid-cols-5 gap-8 mb-12">
+        <div className="relative z-10 max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-10 xl:px-16 py-6 lg:py-10">
 
-            {/* Book Cover */}
-            <div className="lg:col-span-2 group">
-              <div className="relative overflow-hidden rounded-2xl shadow-2xl transform transition-all duration-700 group-hover:scale-105">
+          <div className="flex flex-col xl:flex-row gap-8 xl:gap-12 mb-10">
+            <div className="xl:sticky xl:top-8 xl:self-start w-full xl:w-80 2xl:w-96 shrink-0">
+              <div className="group relative overflow-hidden rounded-2xl shadow-2xl max-w-sm mx-auto xl:max-w-none transition-all duration-700 hover:scale-[1.02]"
+                style={{ boxShadow: '0 8px 40px rgba(210,236,193,0.1)' }}>
                 <img
                   src={book.cover || book.image || book.coverImage}
                   alt={book.title}
-                  className="w-full h-auto transition-transform duration-1000 group-hover:scale-110"
+                  className="w-full h-auto transition-transform duration-1000 group-hover:scale-105"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-
+                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                  style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.6), transparent)' }} />
                 <div className="absolute top-4 right-4 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-all duration-500 transform translate-x-4 group-hover:translate-x-0">
-                  <button
-                    onClick={() => toggleFavorite(id)}
-                    className={`p-3 rounded-full backdrop-blur-md transition-all duration-300 transform hover:scale-110 ${
-                      isFavorite(id) ? 'bg-red-500/80 text-white' : 'bg-white/20 text-white hover:bg-red-500/60'
-                    }`}
-                  >
+                  <button onClick={() => toggleFavorite(id)}
+                    className="p-3 rounded-full backdrop-blur-md transition-all duration-300 hover:scale-110"
+                    style={{ background: isFavorite(id) ? 'rgba(220,50,50,0.8)' : 'rgba(210,236,193,0.2)', color: '#fff' }}>
                     <Heart size={18} className={isFavorite(id) ? 'fill-current' : ''} />
                   </button>
-                  <button className="p-3 bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-blue-500/60 transition-all duration-300 transform hover:scale-110">
-                    <Share2 size={18} />
-                  </button>
-                  <button className="p-3 bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-green-500/60 transition-all duration-300 transform hover:scale-110">
-                    <Download size={18} />
-                  </button>
+                  <button className="p-3 backdrop-blur-md rounded-full transition-all duration-300 hover:scale-110"
+                    style={{ background: 'rgba(210,236,193,0.2)', color: '#fff' }}><Share2 size={18} /></button>
+                  <button className="p-3 backdrop-blur-md rounded-full transition-all duration-300 hover:scale-110"
+                    style={{ background: 'rgba(210,236,193,0.2)', color: '#fff' }}><Download size={18} /></button>
                 </div>
-
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 transform translate-x-[-100%] group-hover:translate-x-[400%] transition-transform duration-1000 ease-out"></div>
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -skew-x-12 transform translate-x-[-100%] group-hover:translate-x-[400%] transition-transform duration-1000 ease-out" />
+              </div>
+              <div className="hidden xl:grid grid-cols-2 gap-3 mt-5">
+                {[
+                  { icon: Globe,    label: book.language,                color: '#D2ECC1' },
+                  { icon: Tag,      label: book.genre,                   color: '#D2ECC1' },
+                  { icon: Clock,    label: formatDuration(book.duration), color: '#D2ECC1' },
+                  { icon: BookOpen, label: `${episodes.length} Episodes`, color: '#D2ECC1' },
+                ].map(({ icon: Icon, label, color }, i) => (
+                  <div key={i} className="p-3 rounded-xl border transition-all duration-300 hover:scale-[1.03]"
+                    style={{ background: 'rgba(210,236,193,0.05)', borderColor: 'rgba(210,236,193,0.12)', backdropFilter: 'blur(8px)' }}>
+                    <div className="flex items-center gap-2">
+                      <Icon size={15} style={{ color, flexShrink: 0 }} />
+                      <span className="text-xs font-medium truncate text-gray-300">{label}</span>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
 
-            {/* Book Info */}
-            <div className="lg:col-span-3 space-y-6">
-              <div className="space-y-4">
-                <h1 className="text-5xl font-bold bg-gradient-to-r from-white via-purple-200 to-blue-200 bg-clip-text text-transparent">
+            <div className="flex-1 min-w-0">
+
+              <div className="mb-6">
+                <h1 className="text-3xl sm:text-4xl lg:text-5xl 2xl:text-6xl font-bold leading-tight mb-2 text-white">
                   {book.title}
                 </h1>
-                <p className="text-2xl text-gray-300">
-                  by <span className="text-purple-400 font-semibold">{book.author}</span>
+                <p className="text-lg sm:text-xl mb-5 text-gray-300">
+                  by <span className="font-semibold" style={{ color: '#D2ECC1' }}>{book.author}</span>
                 </p>
-              </div>
 
-              <div className="grid grid-cols-2 gap-6">
-                {[
-                  { icon: Globe, label: book.language, color: 'text-blue-400' },
-                  { icon: Tag, label: book.genre, color: 'text-purple-400' },
-                  { icon: Clock, label: formatDuration(book.duration), color: 'text-teal-400' },
-                  { icon: BookOpen, label: `${episodes.length} Episodes`, color: 'text-orange-400' }
-                ].map(({ icon: Icon, label, color }, index) => (
-                  <div key={index} className="group p-4 bg-gradient-to-br from-slate-800/50 to-slate-700/50 backdrop-blur-sm rounded-xl border border-slate-600 hover:border-purple-400 transition-all duration-500 transform hover:scale-105">
-                    <div className="flex items-center gap-3">
-                      <Icon size={20} className={`${color} transition-transform duration-300 group-hover:scale-110 group-hover:rotate-12`} />
-                      <span className="text-gray-200 font-medium">{label}</span>
+                <div className="xl:hidden grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+                  {[
+                    { icon: Globe,    label: book.language                },
+                    { icon: Tag,      label: book.genre                   },
+                    { icon: Clock,    label: formatDuration(book.duration) },
+                    { icon: BookOpen, label: `${episodes.length} Episodes` },
+                  ].map(({ icon: Icon, label }, i) => (
+                    <div key={i} className="p-3 sm:p-4 rounded-xl border transition-all duration-300 hover:scale-[1.03]"
+                      style={{ background: 'rgba(210,236,193,0.05)', borderColor: 'rgba(210,236,193,0.12)', backdropFilter: 'blur(8px)' }}>
+                      <div className="flex items-center gap-2">
+                        <Icon size={16} style={{ color: '#D2ECC1', flexShrink: 0 }} />
+                        <span className="text-xs sm:text-sm font-medium truncate text-gray-300">{label}</span>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
 
-              <div className="flex gap-4">
-                <button
-                  onClick={() => {
-                    if (episodes[0]) {
-                      handlePlayEpisode(episodes[0]);
-                      addToHistory(id);
-                    }
-                  }}
-                  className="group relative flex-1 px-8 py-4 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white rounded-xl flex items-center justify-center gap-3 transition-all duration-500 transform hover:scale-105 hover:shadow-2xl font-semibold text-lg"
-                >
-                  <Play size={24} />
-                  Start Listening
-                </button>
-
-                <button
-                  onClick={() => toggleFavorite(id)}
-                  className={`px-8 py-4 border-2 transition-all duration-500 transform hover:scale-105 hover:shadow-xl font-semibold rounded-xl text-white ${
-                    isFavorite(id)
-                      ? 'border-red-400 bg-red-500/20 hover:bg-red-500/30'
-                      : 'border-slate-600 hover:border-purple-400 hover:bg-slate-800/50'
-                  }`}
-                >
-                  {isFavorite(id) ? '❤️ Saved' : 'Add to Library'}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Tabs */}
-          <div className="border-b border-slate-700 mb-8">
-            <div className="flex gap-8">
-              {['overview', 'episodes', 'reviews'].map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`group relative pb-4 font-semibold text-lg transition-all duration-500 ${
-                    activeTab === tab ? 'text-purple-400' : 'text-gray-400 hover:text-white'
-                  }`}
-                >
-                  {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                  <div className={`absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-purple-500 to-blue-500 transition-all duration-500 ${
-                    activeTab === tab ? 'opacity-100 scale-x-100' : 'opacity-0 scale-x-0'
-                  }`}></div>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            {activeTab === 'overview' && (
-              <div
-                className="text-gray-300 leading-relaxed space-y-4 p-6 bg-gradient-to-br from-slate-800/30 to-slate-700/30 backdrop-blur-sm rounded-xl border border-slate-600"
-                dangerouslySetInnerHTML={{ __html: book.description || '<p>No description available.</p>' }}
-              />
-            )}
-
-            {activeTab === 'episodes' && (
-              <div className="space-y-4">
-                {episodes.map((ep, i) => (
-                  <div
-                    key={ep._id}
-                    className="group p-6 rounded-2xl border border-slate-700 bg-gradient-to-br from-slate-800/50 to-slate-900/50 backdrop-blur-sm text-white transition-all duration-500 hover:border-purple-400 hover:shadow-2xl transform hover:scale-[1.02]"
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <button
+                    onClick={() => { if (episodes[0]) { handlePlayEpisode(episodes[0]); addToHistory(id); } }}
+                    className="flex-1 sm:flex-none sm:min-w-[200px] px-8 py-3.5 rounded-xl flex items-center justify-center gap-3 font-semibold text-base transition-all duration-300 hover:scale-105"
+                    style={{ background: '#D2ECC1', color: '#1a2e14', boxShadow: '0 4px 20px rgba(210,236,193,0.25)' }}
+                    onMouseEnter={e => { e.currentTarget.style.background='#bde0a8'; e.currentTarget.style.boxShadow='0 6px 28px rgba(210,236,193,0.4)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background='#D2ECC1'; e.currentTarget.style.boxShadow='0 4px 20px rgba(210,236,193,0.25)'; }}
                   >
-                    <div onClick={() => handlePlayEpisode(ep)} className="flex justify-between items-center cursor-pointer">
-                      <div className="space-y-2">
-                        <h4 className="font-semibold text-lg group-hover:text-purple-300 transition-colors duration-300">
-                          {ep.title || `Episode ${ep.episodeNumber || i + 1}`}
-                        </h4>
-                        <p className="text-sm text-gray-400 flex items-center gap-2">
-                          <Clock size={14} />
-                          {formatDuration(ep.duration)}
-                        </p>
-                      </div>
-                      <div className="p-3 bg-purple-600/20 hover:bg-purple-600/40 rounded-full transition-all duration-300 transform group-hover:scale-110">
-                        <Play size={20} />
-                      </div>
-                    </div>
-
-                    {currentEpisodeId === ep._id && (
-                      <div className="mt-6 p-4 bg-gradient-to-r from-purple-900/30 to-blue-900/30 rounded-xl border border-purple-500/30">
-                        <div className="flex justify-between items-center mb-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse"></div>
-                            <p className="text-sm text-purple-300 truncate font-medium">
-                              Now Playing: {currentEpisodeTitle}
-                            </p>
-                          </div>
-                          <div className="flex gap-3 items-center">
-                            <button onClick={() => jump(-10)} className="p-2 hover:bg-white/10 rounded-full transition-all duration-300 transform hover:scale-110">
-                              <SkipBack size={18} />
-                            </button>
-                            <button onClick={togglePlayPause} className="p-3 bg-purple-600 hover:bg-purple-500 rounded-full transition-all duration-300 transform hover:scale-110 shadow-lg">
-                              {isPlaying ? <Pause size={20} /> : <Play size={20} />}
-                            </button>
-                            <button onClick={() => jump(10)} className="p-2 hover:bg-white/10 rounded-full transition-all duration-300 transform hover:scale-110">
-                              <SkipForward size={18} />
-                            </button>
-                            <div className="relative">
-                              <button onClick={() => setShowVolumeSlider(!showVolumeSlider)} className="p-2 hover:bg-white/10 rounded-full transition-all duration-300 transform hover:scale-110">
-                                <Volume2 size={18} />
-                              </button>
-                              {showVolumeSlider && (
-                                <div className="absolute bottom-full right-0 mb-2 p-2 bg-slate-800 rounded-lg border border-slate-600">
-                                  <input
-                                    type="range" min="0" max="100" value={volume}
-                                    onChange={handleVolumeChange}
-                                    className="w-20 h-1 bg-slate-600 rounded-lg appearance-none slider"
-                                  />
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="relative w-full h-3 bg-slate-700 rounded-full cursor-pointer overflow-hidden" onClick={handleSeek}>
-                          <div className="absolute inset-0 bg-gradient-to-r from-slate-600 to-slate-500 rounded-full"></div>
-                          <div
-                            className="h-full bg-gradient-to-r from-purple-500 to-blue-500 rounded-full transition-all duration-300 relative overflow-hidden"
-                            style={{ width: `${audioProgress}%` }}
-                          >
-                            <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent animate-pulse"></div>
-                          </div>
-                          <div
-                            className="absolute top-1/2 transform -translate-y-1/2 w-4 h-4 bg-white rounded-full shadow-lg"
-                            style={{ left: `calc(${audioProgress}% - 8px)` }}
-                          ></div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {activeTab === 'reviews' && (
-              <div className="text-center py-20">
-                <div className="space-y-6">
-                  <div className="relative">
-                    <Star size={64} className="mx-auto text-yellow-500 animate-pulse" />
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <Star size={48} className="text-yellow-400 animate-ping" />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <h3 className="text-2xl font-semibold text-white">No reviews yet</h3>
-                    <p className="text-gray-400">Be the first to share your thoughts!</p>
-                  </div>
-                  <button className="px-8 py-3 bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-500 hover:to-orange-500 text-white rounded-xl transition-all duration-500 transform hover:scale-105 font-semibold">
-                    Write a Review
+                    <Play size={20} /> Start Listening
+                  </button>
+                  <button
+                    onClick={() => toggleFavorite(id)}
+                    className="flex-1 sm:flex-none sm:min-w-[160px] px-8 py-3.5 border-2 rounded-xl font-semibold text-base transition-all duration-300 hover:scale-105 text-white"
+                    style={isFavorite(id)
+                      ? { borderColor: '#ef4444', background: 'rgba(239,68,68,0.15)' }
+                      : { borderColor: 'rgba(210,236,193,0.3)', background: 'transparent' }}
+                    onMouseEnter={e => { if (!isFavorite(id)) e.currentTarget.style.borderColor='rgba(210,236,193,0.6)'; }}
+                    onMouseLeave={e => { if (!isFavorite(id)) e.currentTarget.style.borderColor='rgba(210,236,193,0.3)'; }}
+                  >
+                    {isFavorite(id) ? '❤️ Saved' : 'Add to Library'}
                   </button>
                 </div>
               </div>
-            )}
+
+
+              <div className="mb-6" style={{ borderBottom: '1px solid rgba(210,236,193,0.15)' }}>
+                <div className="flex gap-6 sm:gap-10 overflow-x-auto tabs-row">
+                  {['overview', 'episodes', 'reviews'].map((tab) => (
+                    <button
+                      key={tab}
+                      onClick={() => setActiveTab(tab)}
+                      className="relative pb-3 font-semibold text-base sm:text-lg whitespace-nowrap transition-all duration-300 shrink-0"
+                      style={{ color: activeTab === tab ? '#D2ECC1' : 'rgba(255,255,255,0.4)' }}
+                    >
+                      {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                      <div className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full transition-all duration-300"
+                        style={{
+                          background: '#D2ECC1',
+                          opacity: activeTab === tab ? 1 : 0,
+                          transform: activeTab === tab ? 'scaleX(1)' : 'scaleX(0)',
+                        }} />
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {activeTab === 'overview' && (
+                <div
+                  className="leading-relaxed text-sm sm:text-base p-5 sm:p-6 rounded-xl border text-gray-300"
+                  style={{ background: 'rgba(210,236,193,0.04)', borderColor: 'rgba(210,236,193,0.1)', backdropFilter: 'blur(8px)' }}
+                  dangerouslySetInnerHTML={{ __html: book.description || '<p>No description available.</p>' }}
+                />
+              )}
+              {activeTab === 'episodes' && (
+                <div className="space-y-3">
+                  {episodes.map((ep, i) => (
+                    <div
+                      key={ep._id}
+                      className="rounded-2xl border transition-all duration-300"
+                      style={{ background: 'rgba(255,255,255,0.03)', borderColor: 'rgba(210,236,193,0.12)', backdropFilter: 'blur(8px)' }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor='rgba(210,236,193,0.3)'; e.currentTarget.style.boxShadow='0 4px 24px rgba(210,236,193,0.07)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor='rgba(210,236,193,0.12)'; e.currentTarget.style.boxShadow='none'; }}
+                    >
+                      <div onClick={() => handlePlayEpisode(ep)} className="flex justify-between items-center cursor-pointer p-4 sm:p-5">
+                        <div className="min-w-0 flex-1 pr-4">
+                          <div className="flex items-center gap-3 mb-1">
+                            <span className="shrink-0 w-7 h-7 rounded-full text-xs font-bold flex items-center justify-center"
+                              style={{ background: 'rgba(210,236,193,0.1)', border: '1px solid rgba(210,236,193,0.2)', color: '#D2ECC1' }}>
+                              {ep.episodeNumber || i + 1}
+                            </span>
+                            <h4 className="font-semibold text-sm sm:text-base truncate text-white transition-colors duration-200">
+                              {ep.title || `Episode ${ep.episodeNumber || i + 1}`}
+                            </h4>
+                          </div>
+                          <p className="text-xs flex items-center gap-1.5 pl-10 text-gray-400">
+                            <Clock size={12} className="shrink-0" />
+                            {formatDuration(ep.duration)}
+                          </p>
+                        </div>
+                        <div className="p-2.5 rounded-full transition-all duration-200 shrink-0"
+                          style={currentEpisodeId === ep._id
+                            ? { background: '#D2ECC1', color: '#1a2e14' }
+                            : { background: 'rgba(210,236,193,0.1)', color: '#D2ECC1' }}>
+                          {currentEpisodeId === ep._id && isPlaying ? <Pause size={16} /> : <Play size={16} />}
+                        </div>
+                      </div>
+
+                      {currentEpisodeId === ep._id && (
+                        <div className="px-4 sm:px-5 pb-4 sm:pb-5">
+                          <EpisodePlayer
+                            audioRef={audioRef}
+                            title={currentEpisodeTitle}
+                            isPlaying={isPlaying}
+                            onTogglePlay={togglePlayPause}
+                            onJump={jump}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {activeTab === 'reviews' && (
+                <div className="text-center py-16">
+                  <div className="space-y-5">
+                    <div className="relative inline-block">
+                      <Star size={56} className="animate-pulse" style={{ color: '#D2ECC1' }} />
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <Star size={40} className="animate-ping" style={{ color: '#D2ECC1' }} />
+                      </div>
+                    </div>
+                    <div>
+                      <h3 className="text-xl sm:text-2xl font-semibold text-white mb-1">No reviews yet</h3>
+                      <p className="text-sm sm:text-base text-gray-400">Be the first to share your thoughts!</p>
+                    </div>
+                    <button
+                      className="px-7 py-3 rounded-xl font-semibold text-sm sm:text-base transition-all duration-300 hover:scale-105"
+                      style={{ background: '#D2ECC1', color: '#1a2e14', boxShadow: '0 4px 16px rgba(210,236,193,0.2)' }}
+                      onMouseEnter={e => e.currentTarget.style.background='#bde0a8'}
+                      onMouseLeave={e => e.currentTarget.style.background='#D2ECC1'}
+                    >
+                      Write a Review
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
-
-        <audio
-          ref={audioRef}
-          src={currentAudioUrl}
-          onTimeUpdate={onTimeUpdate}
-          onEnded={() => setIsPlaying(false)}
-        />
-
-        <style jsx>{`
-          @keyframes fade-in {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-          }
-          .animate-fade-in { animation: fade-in 0.6s ease-out forwards; }
-          .slider::-webkit-slider-thumb {
-            appearance: none; width: 16px; height: 16px;
-            background: linear-gradient(45deg, #8b5cf6, #3b82f6);
-            border-radius: 50%; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-          }
-          .slider::-moz-range-thumb {
-            width: 16px; height: 16px;
-            background: linear-gradient(45deg, #8b5cf6, #3b82f6);
-            border-radius: 50%; cursor: pointer; border: none;
-          }
-        `}</style>
       </div>
     </Layout>
   );

@@ -65,7 +65,7 @@ const Header = ({
               className="p-2 hover:bg-gray-200 dark:hover:bg-gray-800 rounded-full transition-all duration-300"
               title="My Favorites"
             >
-              <Heart className="w-5 h-5 text-red-400 fill-red-400" />
+              <Heart className="w-5 h-5 text-[#D2ECC1] fill-[#D2ECC1]" />
             </button>
           )}
 
@@ -75,7 +75,7 @@ const Header = ({
               className="p-2 hover:bg-gray-200 dark:hover:bg-gray-800 rounded-full transition-all duration-300"
               title="Listening History"
             >
-              <History className="w-5 h-5 text-purple-400" />
+              <History className="w-5 h-5 text-[#D2ECC1]" />
             </button>
           )}
 
@@ -84,15 +84,15 @@ const Header = ({
             className={`p-2 hover:bg-gray-200 dark:hover:bg-gray-800 rounded-full ${!isLoggedIn ? "opacity-50 cursor-not-allowed" : ""}`}
             title={!isLoggedIn ? "Login to access profile" : "Open profile"}
           >
-            <User className="w-5 h-5" />
+            <User className="w-5 h-5 text-[#D2ECC1]" />
           </button>
 
           <button onClick={toggleTheme} className="hidden sm:inline p-2 hover:bg-gray-200 dark:hover:bg-gray-800 rounded-full">
-            {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+            {darkMode ? <Sun className="w-5 h-5 text-[#D2ECC1]" /> : <Moon className="w-5 h-5 text-[#D2ECC1]" />}
           </button>
 
           <button onClick={toggleMenu} className="p-2 hover:bg-gray-200 dark:hover:bg-gray-800 rounded-full">
-            {menuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            {menuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5 text-[#D2ECC1]" />}
           </button>
         </div>
       </div>
