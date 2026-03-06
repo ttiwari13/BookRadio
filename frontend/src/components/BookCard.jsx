@@ -63,10 +63,10 @@ const BookCard = ({ book }) => {
   const currentPage = searchParams.get("page") || "1";
 
   const getCurrentRoute = () => {
-    if (location.pathname === '/') return 'home';
-    if (location.pathname === '/home') return 'home';
-    if (location.pathname === '/explore') return 'explore';
-    return location.pathname.slice(1) || 'explore';
+    if (location.pathname === "/") return "home";
+    if (location.pathname === "/home") return "home";
+    if (location.pathname === "/explore") return "explore";
+    return location.pathname.slice(1) || "explore";
   };
 
   const currentRoute = getCurrentRoute();
@@ -87,15 +87,19 @@ const BookCard = ({ book }) => {
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
-        <div className="relative flex flex-col h-full bg-gradient-to-br from-slate-800 via-slate-850 to-slate-900 text-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 group-hover:scale-[1.03] overflow-hidden border border-slate-700"
-          style={{ ['--tw-border-opacity']: 1 }}
-          onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(210,236,193,0.3)'}
-          onMouseLeave={e => e.currentTarget.style.borderColor = 'rgb(51 65 85)'}
+        {/* FIX: removed computed property key style={{ ['--tw-border-opacity']: 1 }} — caused parse error */}
+        <div
+          className="relative flex flex-col h-full bg-gradient-to-br from-slate-800 via-slate-850 to-slate-900 text-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-500 group-hover:scale-[1.03] overflow-hidden border border-slate-700"
+          onMouseEnter={(e) => { e.currentTarget.style.borderColor = "rgba(210,236,193,0.3)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgb(51,65,85)"; }}
         >
+          {/* Hover overlay */}
+          <div
+            className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+            style={{ background: "linear-gradient(135deg, rgba(210,236,193,0.07), rgba(210,236,193,0.03))" }}
+          />
 
-
-          <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
-            style={{ background: 'linear-gradient(135deg, rgba(210,236,193,0.07), rgba(210,236,193,0.03))' }} />
+          {/* Cover */}
           <div className="relative w-full aspect-[3/4] overflow-hidden rounded-t-2xl">
             <img
               src={book.image || book.coverImage || "/fallback-book.jpg"}
@@ -104,25 +108,34 @@ const BookCard = ({ book }) => {
               onError={(e) => { e.target.src = "/fallback-book.jpg"; }}
             />
 
-            <div className={`absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent transition-opacity duration-500 ${isHovered ? 'opacity-100' : 'opacity-0'}`} />
+            <div className={`absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent transition-opacity duration-500 ${isHovered ? "opacity-100" : "opacity-0"}`} />
 
-            <div className={`absolute inset-0 flex items-center justify-center transition-all duration-500 ${isHovered ? 'opacity-100 scale-100' : 'opacity-0 scale-75'}`}>
-              <div className="backdrop-blur-sm rounded-full p-4 border shadow-2xl"
-                style={{ background: 'rgba(210,236,193,0.2)', borderColor: 'rgba(210,236,193,0.4)' }}>
-                <div className="w-6 h-6 border-l-8 border-t-4 border-b-4 border-t-transparent border-b-transparent ml-1"
-                  style={{ borderLeftColor: '#D2ECC1' }} />
+            {/* Play button */}
+            <div className={`absolute inset-0 flex items-center justify-center transition-all duration-500 ${isHovered ? "opacity-100 scale-100" : "opacity-0 scale-75"}`}>
+              <div
+                className="backdrop-blur-sm rounded-full p-4 border shadow-2xl"
+                style={{ background: "rgba(210,236,193,0.2)", borderColor: "rgba(210,236,193,0.4)" }}
+              >
+                <div
+                  className="w-6 h-6 border-l-8 border-t-4 border-b-4 border-t-transparent border-b-transparent ml-1"
+                  style={{ borderLeftColor: "#D2ECC1" }}
+                />
               </div>
             </div>
 
+            {/* Language badge */}
             {book.language && (
               <div className="absolute top-2 right-2 transform transition-all duration-300 group-hover:scale-110">
-                <span className="text-[10px] sm:text-xs px-3 py-1 rounded-full font-medium shadow-lg backdrop-blur-sm border"
-                  style={{ background: 'rgba(210,236,193,0.15)', borderColor: 'rgba(210,236,193,0.3)', color: '#D2ECC1' }}>
+                <span
+                  className="text-[10px] sm:text-xs px-3 py-1 rounded-full font-medium shadow-lg backdrop-blur-sm border"
+                  style={{ background: "rgba(210,236,193,0.15)", borderColor: "rgba(210,236,193,0.3)", color: "#D2ECC1" }}
+                >
                   {book.language}
                 </span>
               </div>
             )}
 
+            {/* Favorite button */}
             <button
               onClick={(e) => {
                 e.preventDefault();
@@ -137,37 +150,45 @@ const BookCard = ({ book }) => {
               )}
             </button>
 
-
+            {/* Shimmer */}
             <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-transparent via-white/10 to-transparent -skew-x-12 transform translate-x-[-100%] group-hover:translate-x-[400%] transition-transform duration-1000 ease-out" />
           </div>
 
+          {/* Content */}
           <div className="relative flex flex-col justify-between flex-1 p-3 sm:p-4 z-10">
             <div className="space-y-3">
 
-              <h2 className="text-base sm:text-lg font-semibold line-clamp-2 transition-all duration-500 transform group-hover:translate-y-[-2px]"
-                style={{ color: isHovered ? 'transparent' : 'white',
-                  backgroundImage: isHovered ? 'linear-gradient(to right, #D2ECC1, #a8d48a)' : 'none',
-                  WebkitBackgroundClip: isHovered ? 'text' : 'unset',
-                  backgroundClip: isHovered ? 'text' : 'unset',
-                }}>
+              {/* Title */}
+              <h2
+                className="text-base sm:text-lg font-semibold line-clamp-2 transition-all duration-500 transform group-hover:translate-y-[-2px]"
+                style={{
+                  color: isHovered ? "transparent" : "white",
+                  backgroundImage: isHovered ? "linear-gradient(to right, #D2ECC1, #a8d48a)" : "none",
+                  WebkitBackgroundClip: isHovered ? "text" : "unset",
+                  backgroundClip: isHovered ? "text" : "unset",
+                }}
+              >
                 {book.title || "Untitled Book"}
               </h2>
 
               <div className="flex items-center text-xs sm:text-sm text-gray-300 transition-all duration-300 group-hover:text-gray-200 transform group-hover:translate-x-1">
+                <span className="mr-2 text-base">👤</span>
                 <span>by {book.author || "Unknown Author"}</span>
               </div>
 
               <div className="flex items-center text-xs sm:text-sm text-gray-400 transition-all duration-300 group-hover:text-gray-300 transform group-hover:translate-x-1">
-               
+                <span className="mr-2 text-base">⏱️</span>
                 <span>{formatDuration(book.duration)}</span>
               </div>
 
               <div className="flex justify-between items-center text-xs sm:text-sm mt-2">
                 {book.genre && (
-                  <div className="flex items-center" style={{ color: '#D2ECC1' }}>
-                    
-                    <span className="px-2 py-1 rounded-full border"
-                      style={{ background: 'rgba(210,236,193,0.1)', borderColor: 'rgba(210,236,193,0.25)' }}>
+                  <div className="flex items-center" style={{ color: "#D2ECC1" }}>
+                    <span className="mr-2 text-base">📚</span>
+                    <span
+                      className="px-2 py-1 rounded-full border"
+                      style={{ background: "rgba(210,236,193,0.1)", borderColor: "rgba(210,236,193,0.25)" }}
+                    >
                       {book.genre}
                     </span>
                   </div>
@@ -183,6 +204,7 @@ const BookCard = ({ book }) => {
               </div>
             </div>
 
+            {/* Tags */}
             {(book.tags?.length > 0 || book.categories?.length > 0) && (
               <div className="flex flex-wrap gap-2 pt-4 text-[10px] sm:text-xs">
                 {(book.tags || book.categories || []).slice(0, 3).map((tag, i) => (
@@ -190,10 +212,10 @@ const BookCard = ({ book }) => {
                     key={i}
                     className="px-3 py-1.5 rounded-full shadow-md transition-all duration-300 group-hover:scale-105 whitespace-nowrap"
                     style={{
-                      background: isHovered ? 'rgba(210,236,193,0.12)' : 'linear-gradient(to right, #334155, #1e293b)',
-                      border: isHovered ? '1px solid rgba(210,236,193,0.3)' : '1px solid #475569',
-                      color: isHovered ? '#D2ECC1' : '#d1d5db',
-                      animation: isHovered ? `tagBounce 0.6s ease-in-out ${i * 100}ms` : 'none',
+                      background: isHovered ? "rgba(210,236,193,0.12)" : "linear-gradient(to right, #334155, #1e293b)",
+                      border: isHovered ? "1px solid rgba(210,236,193,0.3)" : "1px solid #475569",
+                      color: isHovered ? "#D2ECC1" : "#d1d5db",
+                      animation: isHovered ? `tagBounce 0.6s ease-in-out ${i * 100}ms` : "none",
                     }}
                   >
                     #{tag}
@@ -208,8 +230,11 @@ const BookCard = ({ book }) => {
             )}
           </div>
 
-          <div className="absolute bottom-0 left-0 right-0 h-[2px] opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-            style={{ background: 'linear-gradient(to right, #D2ECC1, #a8d48a, #D2ECC1)' }} />
+          {/* Bottom accent bar */}
+          <div
+            className="absolute bottom-0 left-0 right-0 h-[2px] opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+            style={{ background: "linear-gradient(to right, #D2ECC1, #a8d48a, #D2ECC1)" }}
+          />
         </div>
       </Link>
     </>
